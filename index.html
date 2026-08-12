@@ -87,24 +87,48 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
 
+
+/* ===== 防爆版：任何格線子元素都不准撐開容器 ===== */
+*{min-width:0}
+.card,.item,.urow,.rec{overflow-wrap:anywhere}
+input,select,textarea{max-width:100%;width:100%;
+  -webkit-appearance:none;appearance:none;background-clip:padding-box}
+input[type=date],input[type=time]{min-height:46px;line-height:1.2;
+  display:block;text-align:left}
+input[type=checkbox]{width:19px;min-height:0;-webkit-appearance:auto;appearance:auto}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),
+  linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 52%,calc(100% - 12px) 52%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px}
+.row,.ugrid,.bgrid,.bal,.acts2,.sum,.tabs,.filters{min-width:0}
+.row>*,.ugrid>*,.bgrid>*,.bal>*,.sum>*{min-width:0}
+
 /* --- 前台專屬 --- */
 .hero{display:flex;align-items:center;gap:12px;padding:16px 18px}
 .ava{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:700;
   background:linear-gradient(145deg,var(--gold),#9E7820);color:#1C1305;box-shadow:0 0 16px rgba(217,169,60,.4)}
 .hero .nm{font-weight:700;font-size:16px}
 .hero .rl{font-size:12px;color:var(--dim)}
-.hero .out{margin-left:auto}
+.hero .out{margin-left:auto;flex:none}
 
-.bal{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 18px 18px}
-.bcell{background:var(--bg);border-radius:11px;padding:13px 14px;box-shadow:0 0 0 1px rgba(255,255,255,.05)}
-.bcell .k{font-size:11.5px;color:var(--dim);letter-spacing:.05em}
-.bcell .v{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--gold-b);
-  text-shadow:0 0 16px rgba(217,169,60,.45);line-height:1.45;margin-top:2px;
-  overflow:visible;white-space:nowrap}
-.bcell .v small{font-size:11px;color:var(--dim2);font-weight:400;margin-left:3px;text-shadow:none}
-.bar{height:5px;background:rgba(255,255,255,.07);border-radius:3px;margin-top:9px;overflow:hidden}
+.bal{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px}
+.bcell{background:var(--bg);border-radius:12px;padding:13px 14px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.05);display:flex;flex-direction:column;gap:2px}
+.bcell .k{font-size:11.5px;color:var(--dim);letter-spacing:.04em;line-height:1.4}
+.bcell .v{font-family:var(--mono);font-size:25px;font-weight:700;color:var(--gold-b);
+  text-shadow:0 0 16px rgba(217,169,60,.4);line-height:1.5;white-space:nowrap;
+  display:flex;align-items:baseline;gap:3px}
+.bcell .v small{font-size:11px;color:var(--dim2);font-weight:400;text-shadow:none}
+.bcell.mo .v{color:var(--txt);text-shadow:none;font-size:22px}
+.bar{height:5px;background:rgba(255,255,255,.07);border-radius:3px;margin-top:7px;overflow:hidden}
+.bar{position:relative}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-b));
   box-shadow:0 0 10px rgba(217,169,60,.6);transition:width .4s}
+.bar b{position:absolute;top:0;bottom:0;left:0;width:0;border-radius:3px;
+  background:repeating-linear-gradient(45deg,rgba(229,168,63,.95) 0 4px,rgba(180,120,30,.9) 4px 8px);
+  transition:width .4s}
+.warn{font-size:11px;color:var(--warn);line-height:1.5;margin-top:7px}
+.msec{font-size:11px;color:var(--dim2);letter-spacing:.1em;padding:0 18px 8px}
 
 .acts2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
 .big{background:var(--card);border:none;border-radius:14px;padding:22px 12px;cursor:pointer;
@@ -121,13 +145,16 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
   padding:9px 15px;cursor:pointer;font-size:14px;color:var(--dim)}
 .chip[aria-pressed="true"]{color:var(--gold-b);border-color:transparent;background:rgba(217,169,60,.1);
   box-shadow:0 0 0 1px rgba(217,169,60,.55),0 0 16px rgba(217,169,60,.2)}
-.calc{background:var(--bg);border-radius:11px;padding:15px 16px;margin-bottom:15px;
-  box-shadow:0 0 0 1px var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.calc .lab{font-size:12.5px;color:var(--dim)}
-.calc .big2{font-family:var(--mono);font-size:30px;font-weight:700;color:var(--gold-b);
-  text-shadow:0 0 16px rgba(217,169,60,.4);line-height:1.3;white-space:nowrap}
-.calc .after{margin-left:auto;text-align:right;font-size:12.5px;color:var(--dim);
-  line-height:1.6;max-width:58%;min-width:0}
+.calc{background:var(--bg);border-radius:12px;padding:15px 16px;margin-bottom:15px;
+  box-shadow:0 0 0 1px var(--line)}
+.calc .lab{font-size:12px;color:var(--dim);letter-spacing:.04em}
+.calc .big2{font-family:var(--mono);font-size:32px;font-weight:700;color:var(--gold-b);
+  text-shadow:0 0 16px rgba(217,169,60,.4);line-height:1.4;white-space:nowrap}
+.calc .big2 small{font-size:12px;color:var(--dim2);font-weight:400;margin-left:4px;text-shadow:none}
+.calc .after{font-size:13px;color:var(--dim);line-height:1.6;margin-top:9px;
+  padding-top:10px;border-top:1px solid rgba(255,255,255,.07)}
+.calc .after:empty{display:none}
+.calc .after b{font-family:var(--mono);color:var(--gold-b);font-size:15px}
 .calc .after b{font-family:var(--mono);color:var(--txt)}
 .switch{display:flex;align-items:center;gap:10px;font-size:14.5px;cursor:pointer;padding:4px 0}
 .switch input{width:19px;height:19px;accent-color:var(--gold);flex:none}
@@ -154,7 +181,7 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
       <div id="gErr" class="err hide"></div>
       <div class="field">
         <label class="lb" for="gid">ID</label>
-        <input type="text" id="gid" autocapitalize="off" autocomplete="username" placeholder="英文或數字">
+        <input type="text" id="gid" autocapitalize="off" autocomplete="username" placeholder="自己取，英文或數字">
       </div>
       <div class="field">
         <label class="lb" for="gpw">密碼</label>
@@ -171,9 +198,9 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
     <div class="card"><div class="cbd" style="padding:32px 26px">
       <div class="brand">TPS · 行政室</div>
       <h1 style="font-size:20px">歡迎，先填一下姓名</h1>
-      <p class="sub" style="margin:6px 0 22px">秘書長的後台會看到這個名字，請填中文全名。</p>
+      <p class="sub" style="margin:6px 0 22px">秘書長的後台會看到這個名字。<br>如果名單上已經有你，時數會自動接上。</p>
       <div id="nErr" class="err hide"></div>
-      <div class="field"><input type="text" id="nInp" placeholder="例如 楊綺萍"></div>
+      <div class="field"><input type="text" id="nInp" placeholder="請填你的中文全名"></div>
       <button class="btn wide" id="nBtn">開始使用</button>
       <button class="btn ghost wide" id="nOut" style="margin-top:10px">登出</button>
     </div></div>
@@ -187,18 +214,33 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
     <div class="hero">
       <div class="ava" id="ava"></div>
       <div><div class="nm" id="nm"></div><div class="rl" id="rl"></div></div>
-      <button class="btn ghost sm out" id="outBtn">登出</button>
+      <div class="out" style="display:flex;gap:7px">
+        <button class="btn ghost sm" id="pwBtn">改密碼</button>
+        <button class="btn ghost sm" id="outBtn">登出</button>
+      </div>
     </div>
     <div class="bal">
       <div class="bcell">
-        <div class="k">特別休假</div>
+        <div class="k">特別休假剩餘</div>
         <div class="v num"><span id="annV">0</span><small>小時</small></div>
-        <div class="bar"><i id="annB" style="width:0"></i></div>
+        <div class="bar"><i id="annB" style="width:0"></i><b id="annCarryB"></b></div>
+        <div class="warn hide" id="carryNote"></div>
       </div>
       <div class="bcell">
-        <div class="k">加班補休</div>
+        <div class="k">加班補休剩餘</div>
         <div class="v num"><span id="cmpV">0</span><small>小時</small></div>
         <div class="bar"><i id="cmpB" style="width:0"></i></div>
+      </div>
+    </div>
+    <div class="msec" id="moLabel">本月</div>
+    <div class="bal">
+      <div class="bcell mo">
+        <div class="k">已請假</div>
+        <div class="v num"><span id="moLv">0</span><small>小時</small></div>
+      </div>
+      <div class="bcell mo">
+        <div class="k">已加班</div>
+        <div class="v num"><span id="moOt">0</span><small>小時</small></div>
       </div>
     </div>
   </div>
@@ -235,10 +277,8 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
       </div>
 
       <div class="calc">
-        <div>
-          <div class="lab">自動算出時數</div>
-          <div class="big2 num"><span id="calcH">0</span></div>
-        </div>
+        <div class="lab">自動算出時數</div>
+        <div class="big2 num"><span id="calcH">0</span><small>小時</small></div>
         <div class="after" id="calcAfter"></div>
       </div>
       <div class="field">
@@ -266,7 +306,8 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
       <div class="field"><label class="lb">時間</label>
         <div class="row"><input type="time" id="os" value="17:00" step="1800"><input type="time" id="oe" value="19:00" step="1800"></div></div>
       <div class="calc">
-        <div><div class="lab">自動算出時數</div><div class="big2 num"><span id="ocalcH">0</span></div></div>
+        <div class="lab">自動算出時數</div>
+        <div class="big2 num"><span id="ocalcH">0</span><small>小時</small></div>
         <div class="after" id="ocalcAfter"></div>
       </div>
       <div class="field">
@@ -286,9 +327,8 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 
 </div></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="shared.js?v=2.2.0"></script>
+<script src="shared.js"></script>
 <script>
 
 var T = window.TPS;
@@ -314,6 +354,7 @@ el('#gBtn').onclick = function(){
   var b = el('#gBtn'); S.busy = true; b.disabled = true; b.textContent = '處理中…';
   T.loginOrRegister(id, pw).then(function(r){
     if(r.isNew) toast('已綁定這組 ID','success');
+    applyUser(r.user);
   }).catch(function(e){
     showErr('gErr', e.message || '登入失敗，請再試一次。');
   }).then(function(){
@@ -328,27 +369,29 @@ el('#gBtn').onclick = function(){
 el('#nBtn').onclick = function(){
   showErr('nErr','');
   var b = el('#nBtn'); b.disabled = true;
-  T.setDisplayName(el('#nInp').value).then(function(){
-    var u = T.currentUser(); u.needsName = false; start(u);
+  T.setDisplayName(el('#nInp').value).then(function(u){
+    toast('歡迎，' + u.name, 'success');
+    applyUser(u);
   }).catch(function(e){ showErr('nErr', e.message); })
     .then(function(){ b.disabled = false; });
 };
 el('#nInp').addEventListener('keydown', function(e){ if(e.key==='Enter') el('#nBtn').click(); });
-el('#nOut').onclick = function(){ T.signOut(); };
-el('#outBtn').onclick = function(){ T.signOut(); };
+el('#nOut').onclick = function(){ T.signOut().then(function(){ applyUser(null); }); };
+el('#outBtn').onclick = function(){ T.signOut().then(function(){ applyUser(null); }); };
 
 /* ---------- 狀態 ---------- */
-T.watchAuth(function(user){
+function applyUser(user){
   S.unsub.forEach(function(f){ f(); }); S.unsub = [];
   if(!user){ screen('#gate'); el('#gpw').value=''; return; }
-  if(user.active === false){ toast('這個帳號已被停用','error'); T.signOut(); return; }
   if(user.needsName){ screen('#nameGate'); el('#nInp').focus(); return; }
   start(user);
-});
+}
+/* 開頁時接回這支手機上次的登入 */
+T.restoreSession().then(applyUser);
 
 function start(user){
   screen('#app');
-  S.uid = user.uid;
+  S.uid = user.sid;
   el('#nm').textContent = user.name;
   el('#rl').textContent = T.ROLE_LABEL[user.role] + '　ID：' + user.loginId;
   el('#ava').textContent = user.name.slice(-2, -1) || user.name.slice(0,1);
@@ -356,25 +399,42 @@ function start(user){
     el('#fLeave').classList.add('hide'); el('#fOt').classList.add('hide');
     document.querySelector('.acts2').classList.add('hide');
   }
-  S.unsub.push(T.watchBalance(user.uid, function(b){
+  S.unsub.push(T.watchBalance(user.sid, function(b){
     S.bal = b || {};
     S.peak.annual = Math.max(S.peak.annual, S.bal.annualRemaining||0, 1);
     S.peak.comp   = Math.max(S.peak.comp,   S.bal.compRemaining||0, 1);
     paintBal();
   }));
-  S.unsub.push(T.watchMyLeaves(renderRecs));
-  T.getBalance(user.uid).then(function(b){
+  el('#moLabel').textContent = '本月（' + THIS_MONTH.replace('-', ' 年 ') + ' 月）';
+  S.unsub.push(T.watchMyLeaves(function(list){ S.myLeaves = list; renderRecs(list); paintMonth(); }));
+  S.unsub.push(T.watchMyOvertime(function(list){ S.myOts = list; paintMonth(); }));
+  T.getBalance(user.sid).then(function(b){
     S.peak.annual = Math.max(b.annualRemaining||0, 1);
     S.peak.comp   = Math.max(b.compRemaining||0, 1);
     S.bal = b; paintBal();
   });
 }
 
+function paintMonth(){
+  el('#moLv').textContent = T.monthLeaveHours(S.myLeaves, THIS_MONTH);
+  el('#moOt').textContent = T.monthOvertimeHours(S.myOts, THIS_MONTH);
+}
+
 function paintBal(){
   var a = S.bal.annualRemaining||0, c = S.bal.compRemaining||0;
+  var carry = S.bal.annualCarry||0;
   el('#annV').textContent = a; el('#cmpV').textContent = c;
   el('#annB').style.width = Math.min(100, a/S.peak.annual*100) + '%';
+  el('#annCarryB').style.width = Math.min(100, carry/S.peak.annual*100) + '%';
   el('#cmpB').style.width = Math.min(100, c/S.peak.comp*100) + '%';
+
+  var note = el('#carryNote');
+  if(carry > 0){
+    var exp = S.bal.annualCarryExpire ? T.fmtDate(S.bal.annualCarryExpire) : '今年底';
+    note.classList.remove('hide');
+    note.textContent = '斜紋那段 ' + carry + ' 小時是去年遞延的，請假會優先扣這段，' +
+      exp + ' 前沒用完就不能再留到下一年。';
+  } else note.classList.add('hide');
   paintCalc();
 }
 
@@ -453,15 +513,23 @@ function paintCalc(){
     var key   = def.deducts === 'annual' ? 'annualRemaining' : 'compRemaining';
     var label = def.deducts === 'annual' ? '特休' : '補休';
     var left  = roundHalf((S.bal[key] || 0) - h);
-    box.innerHTML = left < 0
-      ? '<span style="color:var(--bad)">' + label + '不夠，只剩 <b>' + (S.bal[key]||0) + '</b> 小時</span>'
-      : '送出後' + label + '剩<br><b>' + left + '</b> 小時';
-  } else box.innerHTML = def && def.deducts ? '' : '這個假別不扣時數';
+    if(left < 0){
+      box.innerHTML = '<span style="color:var(--bad)">' + label + '不夠，目前只剩 <b>' +
+        (S.bal[key]||0) + '</b> 小時</span>';
+    } else if(def.deducts === 'annual' && (S.bal.annualCarry||0) > 0){
+      var sp = T.splitAnnual(S.bal, h);
+      box.innerHTML = '會先扣去年遞延的 <b>' + sp.fromCarry + '</b> 小時' +
+        (sp.fromCurrent > 0 ? '，再扣今年的 <b>' + sp.fromCurrent + '</b> 小時' : '') +
+        '<br>核准後特休會剩下 <b>' + left + '</b> 小時';
+    } else {
+      box.innerHTML = '送出並核准後，' + label + '會剩下 <b>' + left + '</b> 小時';
+    }
+  } else box.innerHTML = (def && def.deducts) ? '' : '這個假別不扣特休也不扣補休';
 
   var oh = roundHalf(parseFloat(el('#ohrs').value) || 0);
   el('#ocalcH').textContent = oh;
   el('#ocalcAfter').innerHTML = oh > 0
-    ? '核准後補休增加<br><b>+' + oh + '</b> 小時' : '';
+    ? '核准後加班補休會增加 <b>+' + oh + '</b> 小時' : '';
 }
 ['#st','#ed','#et'].forEach(function(i){ el(i).onchange = autoLeave; });
 el('#sd').onchange = function(){
@@ -543,6 +611,16 @@ function renderRecs(list){
     box.appendChild(d);
   });
 }
+
+el('#pwBtn').onclick = function(){
+  var oldPw = prompt('請輸入目前的密碼');
+  if(oldPw === null) return;
+  var newPw = prompt('請輸入新密碼（至少 4 個字元）');
+  if(newPw === null) return;
+  T.changePassword(oldPw, newPw)
+    .then(function(){ toast('密碼已更新','success'); })
+    .catch(function(e){ toast(e.message,'error'); });
+};
 
 var today = new Date();
 var iso = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
