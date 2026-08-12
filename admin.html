@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>後台 — 請假加班系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070910; --bg2:#0C1018; --panel:#111726; --panel2:#161D2E;
+  --gold:#D4A537; --gold-b:#F2D07A; --gold-dim:rgba(212,165,55,.16);
+  --txt:#E7EAF2; --dim:#8B93A8; --dim2:#5E667A;
+  --ok:#4FB477; --warn:#E0A33E; --bad:#D9564F;
+  --r:6px; --mono:'JetBrains Mono',ui-monospace,monospace; --sans:'Noto Sans TC',system-ui,sans-serif;
+  --halo:0 0 0 1px var(--gold-dim), 0 0 28px rgba(212,165,55,.10), inset 0 1px 0 rgba(255,255,255,.03);
+  --halo-hi:0 0 0 1px rgba(212,165,55,.45), 0 0 40px rgba(212,165,55,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--txt);font-size:15px;line-height:1.65;min-height:100dvh;
+  background:radial-gradient(900px 500px at 50% -10%,rgba(212,165,55,.10),transparent 60%),linear-gradient(180deg,var(--bg2),var(--bg));
+  background-attachment:fixed}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.35;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,transparent 1px 3px)}
+body>*{position:relative;z-index:2}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{font-weight:700;line-height:1.3}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.hide{display:none!important}
+
+#login{min-height:100dvh;display:grid;place-items:center;padding:24px}
+.lcard{width:100%;max-width:380px;background:var(--panel);border-radius:12px;box-shadow:var(--halo);padding:38px 32px}
+.brand{font-family:var(--mono);font-size:11px;letter-spacing:.28em;color:var(--gold);margin-bottom:10px}
+.lcard h1{font-size:21px}
+.lcard .sub{color:var(--dim);font-size:13px;margin:6px 0 26px}
+
+header.top{background:rgba(9,12,20,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--gold-dim)}
+.top-in{max-width:1180px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.top .org{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--gold);text-transform:uppercase}
+.top .title{font-size:16px;font-weight:700}
+.spacer{flex:1}
+.linkbtn{background:none;border:1px solid var(--gold-dim);color:var(--dim);padding:5px 12px;border-radius:var(--r);font-size:12.5px;cursor:pointer}
+.linkbtn:hover{color:var(--gold);border-color:var(--gold)}
+main{max-width:1180px;margin:0 auto;padding:26px 22px 90px}
+
+.tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.tab{background:var(--panel);border:none;border-radius:var(--r);padding:10px 18px;cursor:pointer;color:var(--dim);font-size:14px;font-weight:500;box-shadow:0 0 0 1px rgba(255,255,255,.05)}
+.tab[aria-selected="true"]{color:var(--gold-b);box-shadow:0 0 0 1px rgba(212,165,55,.5),0 0 22px rgba(212,165,55,.18)}
+.tab .badge{display:inline-block;margin-left:7px;background:var(--warn);color:#1A1206;border-radius:9px;padding:0 7px;font-size:11px;font-weight:700;font-family:var(--mono)}
+
+.panel{background:var(--panel);border-radius:10px;box-shadow:var(--halo);margin-bottom:18px}
+.phd{padding:15px 20px;border-bottom:1px solid var(--gold-dim);display:flex;align-items:center;gap:10px}
+.phd h2{font-size:14.5px;letter-spacing:.04em}
+.unit{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--dim2);text-transform:uppercase}
+.pbd{padding:20px}
+
+.item{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.05)}
+.item:last-child{border-bottom:none}
+.itop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.iname{font-weight:700;font-size:15px}
+.itype{color:var(--gold-b);font-size:14px}
+.ihours{margin-left:auto;font-family:var(--mono);font-weight:700;color:var(--gold-b);font-size:15px}
+.imeta{font-family:var(--mono);font-size:12px;color:var(--dim)}
+.inote{font-size:13px;color:var(--dim);margin-top:5px}
+.iflag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:3px;font-weight:700;background:rgba(224,163,62,.15);color:var(--warn)}
+.acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.acts input{flex:1;min-width:160px;padding:7px 10px;background:var(--bg);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);font-size:13px}
+.btn{background:linear-gradient(145deg,var(--gold-b),var(--gold));color:#1A1206;border:none;border-radius:var(--r);padding:10px 22px;font-weight:700;cursor:pointer;font-size:14px;box-shadow:0 0 22px rgba(212,165,55,.28)}
+.btn:hover{box-shadow:0 0 34px rgba(212,165,55,.45)}
+.btn:disabled{background:#2A3040;color:var(--dim2);box-shadow:none;cursor:not-allowed}
+.btn.sm{padding:6px 14px;font-size:12.5px}
+.btn.wide{width:100%}
+.btn.ok{background:linear-gradient(145deg,#68C98D,var(--ok));color:#06210F;box-shadow:0 0 18px rgba(79,180,119,.3)}
+.btn.no{background:none;color:var(--bad);box-shadow:0 0 0 1px rgba(217,86,79,.45)}
+.btn.no:hover{background:rgba(217,86,79,.12)}
+.btn.ghost{background:none;color:var(--dim);box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+.btn.ghost:hover{color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--gold-dim);color:var(--dim);font-weight:500;font-size:12px;letter-spacing:.06em;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--gold-b);font-weight:500}
+select,input[type=text],input[type=password],input[type=date],input[type=number]{
+  padding:7px 10px;background:var(--bg);color:var(--txt);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);font-size:13px}
+input:focus,select:focus{border-color:var(--gold);outline:none}
+.tblwrap{overflow-x:auto}
+.pill{font-size:11px;padding:3px 9px;border-radius:3px;font-weight:700;letter-spacing:.05em}
+.pill.pending{background:rgba(224,163,62,.14);color:var(--warn)}
+.pill.staff{background:rgba(212,165,55,.14);color:var(--gold-b)}
+.pill.viewer{background:rgba(139,147,168,.14);color:var(--dim)}
+.pill.admin{background:rgba(79,180,119,.14);color:var(--ok)}
+.empty{padding:44px 20px;text-align:center;color:var(--dim2);font-size:13.5px}
+.err{background:rgba(217,86,79,.09);color:#F08D87;padding:10px 13px;border-radius:var(--r);font-size:13.5px;margin-bottom:16px;box-shadow:0 0 0 1px rgba(217,86,79,.3)}
+.field{margin-bottom:16px}
+label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);background:var(--panel2);color:var(--txt);padding:12px 22px;border-radius:var(--r);font-size:14px;opacity:0;transition:.28s;z-index:99;box-shadow:var(--halo-hi)}
+.toast.is-in{opacity:1;transform:translate(-50%,0)}
+.toast--error{color:#F08D87}
+.toast--success{color:var(--ok)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<section id="login">
+  <div class="lcard">
+    <div class="brand">TPS · 後台</div>
+    <h1>秘書長審核台</h1>
+    <p class="sub">僅限秘書長帳號登入。</p>
+    <div id="loginErr" class="err hide"></div>
+    <div class="field"><label class="lb" for="lid">ID</label><input type="text" id="lid" style="width:100%" autocapitalize="off" autocomplete="username"></div>
+    <div class="field"><label class="lb" for="lpw">密碼</label><input type="password" id="lpw" style="width:100%" autocomplete="current-password"></div>
+    <button class="btn wide" id="loginBtn">登入</button>
+  </div>
+</section>
+
+<div id="app" class="hide">
+<header class="top"><div class="top-in">
+  <div><div class="org">社團法人台灣物理學會 行政室</div><div class="title">後台 · 秘書長審核台</div></div>
+  <div class="spacer"></div>
+  <span id="whoName" style="font-size:13px;color:var(--dim)"></span>
+  <button class="linkbtn" id="logoutBtn">登出</button>
+</div></header>
+
+<main>
+  <div class="tabs" role="tablist">
+    <button class="tab" data-pane="review" role="tab" aria-selected="true">待審核<span class="badge hide" id="cntAll">0</span></button>
+    <button class="tab" data-pane="people" role="tab" aria-selected="false">人員管理<span class="badge hide" id="cntNew">0</span></button>
+    <button class="tab" data-pane="balance" role="tab" aria-selected="false">時數調整</button>
+  </div>
+
+  <!-- 待審核 -->
+  <div id="paneReview">
+    <section class="panel">
+      <div class="phd"><h2>請假</h2><span class="unit" id="cntLeave">0 筆</span></div>
+      <div id="leaveList"><div class="empty">目前沒有待審的假單。</div></div>
+    </section>
+    <section class="panel">
+      <div class="phd"><h2>加班</h2><span class="unit" id="cntOt">0 筆</span></div>
+      <div id="otList"><div class="empty">目前沒有待審的加班單。</div></div>
+    </section>
+  </div>
+
+  <!-- 人員 -->
+  <div id="panePeople" class="hide">
+    <section class="panel">
+      <div class="phd"><h2>人員</h2><span class="unit">身分・到職日・啟用</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th>姓名</th><th>ID</th><th>身分</th><th>到職日</th><th>狀態</th><th></th></tr></thead>
+        <tbody id="userRows"></tbody>
+      </table></div>
+    </section>
+  </div>
+
+  <!-- 時數 -->
+  <div id="paneBalance" class="hide">
+    <section class="panel">
+      <div class="phd"><h2>目前時數</h2><span class="unit">單位：小時</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th>姓名</th><th>特休剩餘</th><th>補休剩餘</th><th>本年已用特休</th><th>本年已用補休</th><th>調整</th></tr></thead>
+        <tbody id="balRows"></tbody>
+      </table></div>
+    </section>
+    <section class="panel">
+      <div class="phd"><h2>手動調整</h2><span class="unit">會寫入稽核軌跡</span></div>
+      <div class="pbd">
+        <div class="field"><label class="lb">對象</label><select id="adjUser" style="width:100%"></select></div>
+        <div class="field"><label class="lb">項目</label><select id="adjKind" style="width:100%">
+          <option value="annualRemaining">特別休假剩餘</option>
+          <option value="compRemaining">加班補休剩餘</option>
+        </select></div>
+        <div class="field"><label class="lb">改成（小時）</label><input type="number" id="adjVal" step="0.5" style="width:100%"></div>
+        <div class="field"><label class="lb">原因</label><input type="text" id="adjNote" style="width:100%" placeholder="例如：年度特休發放、匯入舊資料校正"></div>
+        <button class="btn" id="adjBtn">套用</button>
+      </div>
+    </section>
+  </div>
+</main>
+</div>
+
+<script type="module">
+import {
+  SHARED_VERSION, ROLES, ROLE_LABEL, STATUS,
+  signInWithId, signOut, watchAuth, isAdmin, currentUser,
+  reviewLeave, reviewOvertime, watchPending, watchPendingOvertime,
+  listUsers, upsertUser, getBalance, writeAudit,
+  db, COL, leaveTypeLabel, fmtDate, fmtDateTime, roundHalf, toast, el,
+} from './shared.js?v=1.1.0';
+import { doc, setDoc, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const S = { unsub:[], users:[], busy:false };
+const showErr=(id,msg)=>{const b=el('#'+id); if(!msg){b.classList.add('hide');return;} b.textContent=msg; b.classList.remove('hide');};
+
+el('#loginBtn').onclick=async()=>{
+  showErr('loginErr','');
+  const b=el('#loginBtn'); b.disabled=true; b.textContent='登入中…';
+  try{ await signInWithId(el('#lid').value, el('#lpw').value); }
+  catch(e){ showErr('loginErr','ID 或密碼不正確。'); }
+  finally{ b.disabled=false; b.textContent='登入'; }
+};
+['#lid','#lpw'].forEach(i=>el(i).addEventListener('keydown',e=>{if(e.key==='Enter')el('#loginBtn').click();}));
+el('#logoutBtn').onclick=()=>signOut();
+
+watchAuth(async user=>{
+  S.unsub.forEach(f=>f()); S.unsub=[];
+  if(!user || user.orphan || !isAdmin()){
+    el('#login').classList.remove('hide'); el('#app').classList.add('hide');
+    if(user && !user.orphan && !isAdmin()){ showErr('loginErr','這個帳號沒有後台權限。'); signOut(); }
+    el('#lpw').value=''; return;
+  }
+  el('#login').classList.add('hide'); el('#app').classList.remove('hide');
+  el('#whoName').textContent=user.name;
+  S.unsub.push(watchPending(renderLeaves));
+  S.unsub.push(watchPendingOvertime(renderOts));
+  await refreshUsers();
+});
+
+/* ---- 分頁 ---- */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));
+  ['review','people','balance'].forEach(p=>
+    el('#pane'+p[0].toUpperCase()+p.slice(1)).classList.toggle('hide', p!==t.dataset.pane));
+  if(t.dataset.pane==='balance') renderBalances();
+});
+
+/* ---- 待審請假 ---- */
+function renderLeaves(list){
+  el('#cntLeave').textContent=`${list.length} 筆`;
+  bumpBadge();
+  const box=el('#leaveList');
+  if(!list.length){ box.innerHTML='<div class="empty">目前沒有待審的假單。</div>'; return; }
+  box.innerHTML='';
+  list.forEach(r=>{
+    const label=r.type==='other'&&r.otherType?r.otherType:leaveTypeLabel(r.type);
+    const d=document.createElement('div'); d.className='item';
+    d.innerHTML=`
+      <div class="itop">
+        <span class="iname">${r.name}</span>
+        <span class="itype">${label}</span>
+        ${r.isLate?'<span class="iflag">事後補請</span>':''}
+        ${r.segments?.length>1?'<span class="iflag">跨月</span>':''}
+        <span class="ihours">${r.hours} 小時</span>
+      </div>
+      <div class="imeta">${fmtDateTime(r.startAt)} → ${fmtDateTime(r.endAt)}</div>
+      ${r.annualHours>0?`<div class="inote">扣特休 ${r.annualHours} 小時</div>`:''}
+      ${r.compHours>0?`<div class="inote">扣補休 ${r.compHours} 小時</div>`:''}
+      ${r.segments?.length>1?`<div class="inote">分月計入：${r.segments.map(s=>`${s.ym} ${s.hours}h`).join('、')}</div>`:''}
+      ${r.isLate&&r.lateReason?`<div class="inote">補請原因：${r.lateReason}</div>`:''}
+      ${r.needsProxy?`<div class="inote">職務代理人：${r.proxyName||'未填'}</div>`:''}`;
+    d.appendChild(actionRow(note=>reviewLeave(r.id,STATUS.APPROVED,note),
+                            note=>reviewLeave(r.id,STATUS.REJECTED,note)));
+    box.appendChild(d);
+  });
+}
+
+/* ---- 待審加班 ---- */
+function renderOts(list){
+  el('#cntOt').textContent=`${list.length} 筆`;
+  bumpBadge();
+  const box=el('#otList');
+  if(!list.length){ box.innerHTML='<div class="empty">目前沒有待審的加班單。</div>'; return; }
+  box.innerHTML='';
+  list.forEach(o=>{
+    const d=document.createElement('div'); d.className='item';
+    d.innerHTML=`
+      <div class="itop">
+        <span class="iname">${o.name}</span>
+        <span class="itype">加班</span>
+        ${o.overCapWarning?'<span class="iflag">本月已逾 46 小時</span>':''}
+        <span class="ihours">${o.hours} 小時</span>
+      </div>
+      <div class="imeta">${fmtDate(o.date)}　${fmtDateTime(o.startAt).slice(-5)} – ${fmtDateTime(o.endAt).slice(-5)}</div>
+      ${o.reason?`<div class="inote">事由：${o.reason}</div>`:''}
+      <div class="inote">核准後補休 +${roundHalf(o.hours+(o.bonusHours||0))} 小時</div>`;
+    const bonus=document.createElement('div');
+    bonus.className='acts';
+    bonus.innerHTML=`<label class="lb" style="margin:0">核派加班增額</label>
+      <input type="number" step="0.5" min="0" value="${o.bonusHours||0}" style="max-width:110px" id="bn_${o.id}">`;
+    d.appendChild(bonus);
+    d.appendChild(actionRow(
+      async note=>{
+        const b=parseFloat(el('#bn_'+o.id).value)||0;
+        if(b!==(o.bonusHours||0))
+          await setDoc(doc(db,COL.overtime,o.id),{bonusHours:roundHalf(b)},{merge:true});
+        await reviewOvertime(o.id,STATUS.APPROVED,note);
+      },
+      note=>reviewOvertime(o.id,STATUS.REJECTED,note)));
+    box.appendChild(d);
+  });
+}
+
+/* ---- 同意 / 駁回 ---- */
+function actionRow(onOk,onNo){
+  const wrap=document.createElement('div'); wrap.className='acts';
+  const note=document.createElement('input'); note.placeholder='註記（選填，申請人看得到）';
+  const ok=document.createElement('button'); ok.className='btn ok sm'; ok.textContent='同意';
+  const no=document.createElement('button'); no.className='btn no sm'; no.textContent='不同意';
+  const run=async(fn,verb)=>{
+    if(S.busy) return;
+    S.busy=true; ok.disabled=no.disabled=true;
+    try{ await fn(note.value.trim()); toast('已'+verb,'success'); }
+    catch(e){ toast(e.message,'error'); ok.disabled=no.disabled=false; }
+    finally{ S.busy=false; }
+  };
+  ok.onclick=()=>run(onOk,'同意');
+  no.onclick=()=>{ if(confirm('確定駁回？')) run(onNo,'駁回'); };
+  wrap.append(note,ok,no);
+  return wrap;
+}
+
+function bumpBadge(){
+  const n=(parseInt(el('#cntLeave').textContent)||0)+(parseInt(el('#cntOt').textContent)||0);
+  const b=el('#cntAll'); b.textContent=n; b.classList.toggle('hide',n===0);
+}
+
+/* ---- 人員 ---- */
+async function refreshUsers(){
+  S.users=await listUsers();
+  const pend=S.users.filter(u=>u.role===ROLES.PENDING).length;
+  const b=el('#cntNew'); b.textContent=pend; b.classList.toggle('hide',pend===0);
+
+  el('#userRows').innerHTML='';
+  S.users.forEach(u=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><b>${u.name||'—'}</b></td>
+      <td class="n">${u.loginId||'—'}</td>
+      <td>
+        <select data-uid="${u.uid}" class="roleSel">
+          ${Object.values(ROLES).map(r=>
+            `<option value="${r}"${u.role===r?' selected':''}>${ROLE_LABEL[r]}</option>`).join('')}
+        </select>
+      </td>
+      <td><input type="date" class="hireInp" data-uid="${u.uid}" value="${u.hireDate?toInput(u.hireDate):''}"></td>
+      <td><span class="pill ${u.role}">${u.active===false?'已停用':'啟用中'}</span></td>
+      <td><button class="btn ghost sm" data-uid="${u.uid}" data-act="toggle">${u.active===false?'啟用':'停用'}</button></td>`;
+    el('#userRows').appendChild(tr);
+  });
+
+  document.querySelectorAll('.roleSel').forEach(s=>s.onchange=async()=>{
+    await upsertUser(s.dataset.uid,{role:s.value});
+    await writeAudit('user.role',s.dataset.uid,null,{role:s.value});
+    toast('身分已更新','success'); refreshUsers();
+  });
+  document.querySelectorAll('.hireInp').forEach(i=>i.onchange=async()=>{
+    await upsertUser(i.dataset.uid,{hireDate:i.value?new Date(i.value+'T00:00:00'):null});
+    toast('到職日已更新','success');
+  });
+  document.querySelectorAll('[data-act="toggle"]').forEach(b=>b.onclick=async()=>{
+    const u=S.users.find(x=>x.uid===b.dataset.uid);
+    await upsertUser(u.uid,{active:u.active===false});
+    toast(u.active===false?'已啟用':'已停用','success'); refreshUsers();
+  });
+
+  el('#adjUser').innerHTML=S.users.filter(u=>u.role===ROLES.STAFF||u.role===ROLES.ADMIN)
+    .map(u=>`<option value="${u.uid}">${u.name}</option>`).join('');
+}
+const toInput=v=>{const d=v?.toDate?v.toDate():new Date(v);
+  return isNaN(d)?'':`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+
+/* ---- 時數 ---- */
+async function renderBalances(){
+  const rows=await Promise.all(S.users
+    .filter(u=>u.role===ROLES.STAFF||u.role===ROLES.ADMIN)
+    .map(async u=>({u, b:await getBalance(u.uid)})));
+  el('#balRows').innerHTML=rows.map(({u,b})=>`
+    <tr><td><b>${u.name}</b></td>
+      <td class="n">${b.annualRemaining||0}</td>
+      <td class="n">${b.compRemaining||0}</td>
+      <td class="n">${b.annualUsedYTD||0}</td>
+      <td class="n">${b.compUsedYTD||0}</td>
+      <td><button class="btn ghost sm" data-pick="${u.uid}">選取</button></td></tr>`).join('')
+    || '<tr><td colspan="6" class="empty">還沒有秘書身分的人員。</td></tr>';
+  document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{
+    el('#adjUser').value=b.dataset.pick;
+    el('#adjUser').scrollIntoView({behavior:'smooth',block:'center'});
+  });
+}
+
+el('#adjBtn').onclick=async()=>{
+  const uid=el('#adjUser').value, kind=el('#adjKind').value;
+  const val=parseFloat(el('#adjVal').value);
+  const note=el('#adjNote').value.trim();
+  if(!uid) return toast('請選擇對象','error');
+  if(isNaN(val)) return toast('請填寫時數','error');
+  if(!note) return toast('請填寫調整原因','error');
+  const before=await getBalance(uid);
+  const b=el('#adjBtn'); b.disabled=true; b.textContent='套用中…';
+  try{
+    await setDoc(doc(db,COL.balances,uid),
+      {[kind]:roundHalf(val), updatedAt:serverTimestamp()},{merge:true});
+    await writeAudit('balance.adjust',uid,{[kind]:before[kind]||0},{[kind]:roundHalf(val),note});
+    toast('已套用','success');
+    el('#adjVal').value=''; el('#adjNote').value='';
+    renderBalances();
+  }catch(e){ toast(e.message,'error'); }
+  finally{ b.disabled=false; b.textContent='套用'; }
+};
+
+console.info(`[TPS] admin.html ↔ shared v${SHARED_VERSION}`);
+</script>
+</body>
+</html>
