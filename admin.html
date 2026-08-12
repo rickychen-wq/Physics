@@ -88,7 +88,7 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 
 
 /* --- 後台專屬 --- */
-.wrap{max-width:720px}
+.wrap{max-width:720px;padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}
 .tb{background:var(--card);border:none;border-radius:11px;padding:13px 8px;cursor:pointer;
   color:var(--dim);font-size:14px;font-weight:600;box-shadow:0 0 0 1px rgba(255,255,255,.05)}
@@ -117,8 +117,10 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 .uhd .st{margin-left:auto;font-size:11px;padding:2px 9px;border-radius:20px}
 .st.on{background:rgba(79,190,129,.15);color:var(--ok)}
 .st.off{background:rgba(141,150,172,.14);color:var(--dim)}
-.ugrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:center}
-.ugrid select,.ugrid input{font-size:14px;padding:9px 11px}
+.ugrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:end}
+.ugrid .fl{font-size:11.5px;color:var(--dim);margin-bottom:5px;display:block}
+.ugrid > div{min-width:0}
+.ugrid select,.ugrid input{font-size:14px;padding:9px 11px;width:100%}
 .bgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .bx{background:var(--bg);border-radius:9px;padding:10px 12px;box-shadow:0 0 0 1px rgba(255,255,255,.05)}
 .bx .k{font-size:11px;color:var(--dim)}
@@ -195,11 +197,12 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="shared.js?v=2.1.0"></script>
+<script src="shared.js?v=2.2.0"></script>
 <script>
 
 var T = window.TPS;
 var el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.roundHalf;
+T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e.code || e), 'error'); });
 var S = { unsub:[], users:[], busy:false, nL:0, nO:0 };
 
 function showErr(id,msg){ var b=el('#'+id); if(!msg){b.classList.add('hide');return;} b.textContent=msg; b.classList.remove('hide'); }
@@ -337,11 +340,14 @@ function refreshUsers(){
         '<span class="uid">' + esc(u.loginId || '') + '</span>' +
         '<span class="st ' + (u.active === false ? 'off' : 'on') + '">' +
           (u.active === false ? '已停用' : '啟用中') + '</span></div>' +
-        '<div class="ugrid"><select class="rs" data-uid="' + u.uid + '">' +
-          Object.keys(T.ROLE_LABEL).map(function(r){
-            return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + T.ROLE_LABEL[r] + '</option>';
-          }).join('') + '</select>' +
-        '<input type="date" class="hi" data-uid="' + u.uid + '" value="' + toInput(u.hireDate) + '"></div>' +
+        '<div class="ugrid">' +
+          '<div><span class="fl">身分</span><select class="rs" data-uid="' + u.uid + '">' +
+            Object.keys(T.ROLE_LABEL).map(function(r){
+              return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + T.ROLE_LABEL[r] + '</option>';
+            }).join('') + '</select></div>' +
+          '<div><span class="fl">到職日</span>' +
+            '<input type="date" class="hi" data-uid="' + u.uid + '" value="' + toInput(u.hireDate) + '"></div>' +
+        '</div>' +
         '<button class="btn ghost sm tg" data-uid="' + u.uid + '" style="margin-top:9px">' +
           (u.active === false ? '啟用' : '停用') + '</button>';
       box.appendChild(d);
