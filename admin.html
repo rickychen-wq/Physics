@@ -37,7 +37,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .card.glow{box-shadow:var(--halo-hi)}
 .chd{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px}
 .chd h2{font-size:14.5px;letter-spacing:.03em}
-.unit{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--dim2)}
+.unit{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  color:var(--dim2);white-space:nowrap;flex:none}
 .cbd{padding:18px}
 
 .brand{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--gold);margin-bottom:9px}
@@ -87,11 +88,25 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
 
+
+/* ===== 防爆版 ===== */
+*{min-width:0}
+.card,.item,.urow{overflow-wrap:anywhere}
+input,select,textarea{max-width:100%;width:100%;
+  -webkit-appearance:none;appearance:none;background-clip:padding-box}
+input[type=date]{min-height:46px;line-height:1.2;display:block;text-align:left}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),
+  linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 52%,calc(100% - 12px) 52%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px}
+.tabs>*,.ugrid>*,.bgrid>*,.arow>*{min-width:0}
+
 /* --- 後台專屬 --- */
 .wrap{max-width:720px;padding-bottom:calc(120px + env(safe-area-inset-bottom))}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}
-.tb{background:var(--card);border:none;border-radius:11px;padding:13px 8px;cursor:pointer;
-  color:var(--dim);font-size:14px;font-weight:600;box-shadow:0 0 0 1px rgba(255,255,255,.05)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:16px}
+.tb{background:var(--card);border:none;border-radius:11px;padding:13px 4px;cursor:pointer;
+  color:var(--dim);font-size:13.5px;font-weight:600;white-space:nowrap;
+  box-shadow:0 0 0 1px rgba(255,255,255,.05)}
 .tb[aria-selected="true"]{color:var(--gold-b);box-shadow:var(--halo-hi)}
 .tb .bd{display:inline-block;margin-left:6px;background:var(--warn);color:#1C1305;
   border-radius:10px;padding:0 7px;font-size:11px;font-weight:700;font-family:var(--mono)}
@@ -100,21 +115,25 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 .itop{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:5px}
 .inm{font-weight:700;font-size:15.5px}
 .ity{color:var(--gold-b);font-size:14px}
-.ih{margin-left:auto;font-family:var(--mono);font-weight:700;color:var(--gold-b);font-size:15px}
+.ih{margin-left:auto;font-family:var(--mono);font-weight:700;color:var(--gold-b);
+  font-size:15px;white-space:nowrap;flex:none}
 .im{font-family:var(--mono);font-size:12.5px;color:var(--dim)}
 .inn{font-size:13px;color:var(--dim);margin-top:4px}
 .flg{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;font-weight:700;
   background:rgba(229,168,63,.16);color:var(--warn)}
-.arow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.arow input{flex:1;min-width:150px;font-size:14px;padding:9px 11px}
-.bonus{display:flex;align-items:center;gap:10px;margin-top:11px;font-size:13px;color:var(--dim)}
-.bonus input{max-width:100px;font-size:14px;padding:8px 10px}
+.arow{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
+.arow input{grid-column:1 / -1;font-size:14px;padding:10px 12px}
+.arow .btn{width:100%;padding:11px 8px}
+.bonus{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:12.5px;
+  color:var(--dim);flex-wrap:wrap}
+.bonus input{width:96px;flex:none;font-size:14px;padding:9px 10px;text-align:center}
 .urow{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.05)}
 .urow:last-child{border-bottom:none}
-.uhd{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.uhd{display:flex;align-items:center;gap:9px;margin-bottom:11px;flex-wrap:wrap}
 .uhd b{font-size:15px}
 .uid{font-family:var(--mono);font-size:12px;color:var(--dim2)}
-.uhd .st{margin-left:auto;font-size:11px;padding:2px 9px;border-radius:20px}
+.uhd .st{margin-left:auto;font-size:11px;padding:3px 10px;border-radius:20px;
+  font-weight:700;white-space:nowrap;flex:none}
 .st.on{background:rgba(79,190,129,.15);color:var(--ok)}
 .st.off{background:rgba(141,150,172,.14);color:var(--dim)}
 .ugrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:end}
@@ -152,7 +171,8 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 
   <div class="tabs">
     <button class="tb" data-p="rev" aria-selected="true">待審核<span class="bd hide" id="bdAll">0</span></button>
-    <button class="tb" data-p="ppl" aria-selected="false">人員</button>
+    <button class="tb" data-p="ppl" aria-selected="false">名單</button>
+    <button class="tb" data-p="acc" aria-selected="false">帳號</button>
     <button class="tb" data-p="bal" aria-selected="false">時數</button>
   </div>
 
@@ -169,8 +189,30 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 
   <div id="pPpl" class="hide">
     <section class="card">
-      <div class="chd"><h2>人員</h2><span class="unit">身分・到職日</span></div>
+      <div class="chd"><h2>人員名單</h2><span class="unit">在職・離職</span></div>
       <div id="uList"><div class="empty">載入中…</div></div>
+    </section>
+    <section class="card">
+      <div class="chd"><h2>新增人員</h2><span class="unit">可同時填初始時數</span></div>
+      <div class="cbd">
+        <div class="info">先把人建好，之後她用這個姓名註冊帳號時，時數和紀錄就會自動接上。</div>
+        <div class="field"><label class="lb">中文姓名</label><input type="text" id="nsName" placeholder="請填全名"></div>
+        <div class="field"><label class="lb">到職日（選填）</label><input type="date" id="nsHire"></div>
+        <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+          <div class="field"><label class="lb">特休 — 去年遞延</label><input type="number" id="nsCarry" step="0.5" value="0"></div>
+          <div class="field"><label class="lb">特休 — 今年新給</label><input type="number" id="nsCur" step="0.5" value="0"></div>
+        </div>
+        <div class="field"><label class="lb">加班補休剩餘</label><input type="number" id="nsComp" step="0.5" value="0"></div>
+        <button class="btn wide" id="nsB">建立</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="pAcc" class="hide">
+    <section class="card">
+      <div class="chd"><h2>帳號</h2><span class="unit">重設密碼・刪除</span></div>
+      <div class="info" style="margin:14px 16px 0">刪除帳號只會讓她無法登入，<b>名單、時數、請假紀錄都會保留</b>。<br>她之後可以用同一個姓名重新註冊，資料會自動接回去。</div>
+      <div id="acList"><div class="empty">載入中…</div></div>
     </section>
   </div>
 
@@ -184,7 +226,8 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
       <div class="cbd">
         <div class="field"><label class="lb">對象</label><select id="aU"></select></div>
         <div class="field"><label class="lb">項目</label><select id="aK">
-          <option value="annualRemaining">特別休假剩餘</option>
+          <option value="annualCurrent">特休 — 今年新給</option>
+          <option value="annualCarry">特休 — 去年遞延（會優先扣）</option>
           <option value="compRemaining">加班補休剩餘</option>
         </select></div>
         <div class="field"><label class="lb">改成（小時）</label><input type="number" id="aV" step="0.5"></div>
@@ -192,12 +235,23 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
         <button class="btn wide" id="aB">套用</button>
       </div>
     </section>
+    <section class="card">
+      <div class="chd"><h2>年度作業</h2><span class="unit">一年做一次</span></div>
+      <div class="cbd">
+        <div class="info">今年沒休完的特休會轉成「遞延」留到明年，請假時優先扣。<br>
+          原本就有的遞延如果還沒休完，依勞基法要折發工資，系統會算給你看。</div>
+        <div class="field"><label class="lb">對象</label><select id="gU"></select></div>
+        <div class="field"><label class="lb">明年新給的特休（小時）</label><input type="number" id="gH" step="0.5" placeholder="例如 70"></div>
+        <div class="field"><label class="lb">遞延到期日</label><input type="date" id="gE"></div>
+        <button class="btn wide" id="gB">執行年度換算</button>
+        <div id="gOut" class="info hide" style="margin:14px 0 0"></div>
+      </div>
+    </section>
   </div>
 </div></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="shared.js?v=2.2.0"></script>
+<script src="shared.js"></script>
 <script>
 
 var T = window.TPS;
@@ -232,11 +286,12 @@ Array.prototype.forEach.call(document.querySelectorAll('.tb'), function(t){
     Array.prototype.forEach.call(document.querySelectorAll('.tb'), function(x){
       x.setAttribute('aria-selected', x === t);
     });
-    ['rev','ppl','bal'].forEach(function(p){
+    ['rev','ppl','acc','bal'].forEach(function(p){
       el('#p' + p[0].toUpperCase() + p.slice(1)).classList.toggle('hide', p !== t.dataset.p);
     });
     if(t.dataset.p === 'bal') renderBal();
     if(t.dataset.p === 'ppl') refreshUsers();
+    if(t.dataset.p === 'acc') renderAccounts();
   };
 });
 
@@ -329,7 +384,7 @@ function toInput(v){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 function refreshUsers(){
-  return T.listUsers().then(function(us){
+  return T.listStaff().then(function(us){
     S.users = us;
     var box = el('#uList');
     if(!us.length){ box.innerHTML = '<div class="empty">還沒有人註冊。</div>'; return; }
@@ -337,68 +392,140 @@ function refreshUsers(){
     us.forEach(function(u){
       var d = document.createElement('div'); d.className = 'urow';
       d.innerHTML = '<div class="uhd"><b>' + esc(u.name || '（未填姓名）') + '</b>' +
-        '<span class="uid">' + esc(u.loginId || '') + '</span>' +
         '<span class="st ' + (u.active === false ? 'off' : 'on') + '">' +
-          (u.active === false ? '已停用' : '啟用中') + '</span></div>' +
+          (u.active === false ? '已離職' : '在職') + '</span></div>' +
         '<div class="ugrid">' +
-          '<div><span class="fl">身分</span><select class="rs" data-uid="' + u.uid + '">' +
-            Object.keys(T.ROLE_LABEL).map(function(r){
-              return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + T.ROLE_LABEL[r] + '</option>';
-            }).join('') + '</select></div>' +
           '<div><span class="fl">到職日</span>' +
-            '<input type="date" class="hi" data-uid="' + u.uid + '" value="' + toInput(u.hireDate) + '"></div>' +
-        '</div>' +
-        '<button class="btn ghost sm tg" data-uid="' + u.uid + '" style="margin-top:9px">' +
-          (u.active === false ? '啟用' : '停用') + '</button>';
+            '<input type="date" class="hi" data-uid="' + u.sid + '" value="' + toInput(u.hireDate) + '"></div>' +
+          '<div><span class="fl">狀態</span>' +
+            '<button class="btn ghost sm tg" data-uid="' + u.sid + '">' +
+              (u.active === false ? '改為在職' : '改為離職') + '</button></div>' +
+        '</div>';
       box.appendChild(d);
     });
     bindUsers();
-    el('#aU').innerHTML = us.filter(function(u){ return u.role === T.ROLES.STAFF; })
-      .map(function(u){ return '<option value="' + u.uid + '">' + esc(u.name || u.loginId) + '</option>'; }).join('');
+    var opts = us.map(function(u){
+      return '<option value="' + u.sid + '">' + esc(u.name) +
+        (u.active === false ? '（已離職）' : '') + '</option>'; }).join('');
+    el('#aU').innerHTML = opts;
+    el('#gU').innerHTML = opts;
   });
 }
 function bindUsers(){
-  Array.prototype.forEach.call(document.querySelectorAll('.rs'), function(s){
-    s.onchange = function(){
-      T.upsertUser(s.dataset.uid, { role: s.value })
-        .then(function(){ return T.writeAudit('user.role', s.dataset.uid, null, { role: s.value }); })
-        .then(function(){ toast('身分已更新','success'); refreshUsers(); });
-    };
-  });
   Array.prototype.forEach.call(document.querySelectorAll('.hi'), function(i){
     i.onchange = function(){
-      T.upsertUser(i.dataset.uid, { hireDate: i.value ? new Date(i.value + 'T00:00:00') : null })
+      T.upsertStaff(i.dataset.uid, { hireDate: i.value ? T.Timestamp.fromDate(new Date(i.value + 'T00:00:00')) : null })
         .then(function(){ toast('到職日已更新','success'); });
     };
   });
   Array.prototype.forEach.call(document.querySelectorAll('.tg'), function(b){
     b.onclick = function(){
       var u = null;
-      S.users.forEach(function(x){ if(x.uid === b.dataset.uid) u = x; });
-      T.upsertUser(u.uid, { active: u.active === false })
-        .then(function(){ toast(u.active === false ? '已啟用' : '已停用','success'); refreshUsers(); });
+      S.users.forEach(function(x){ if(x.sid === b.dataset.uid) u = x; });
+      var toActive = u.active === false;
+      if(!confirm(toActive ? '把「' + u.name + '」改為在職？' : '把「' + u.name + '」改為離職？她將無法登入，但資料全部保留。')) return;
+      T.upsertStaff(u.sid, { active: toActive })
+        .then(function(){ toast(toActive ? '已改為在職' : '已改為離職','success'); refreshUsers(); });
     };
   });
 }
 
+/* ---------- 新增人員 ---------- */
+el('#nsB').onclick = function(){
+  var name = el('#nsName').value.trim();
+  if(!name) return toast('請填姓名','error');
+  var b = el('#nsB'); b.disabled = true; b.textContent = '建立中…';
+  T.createStaff(name, {
+    hireDate: el('#nsHire').value ? new Date(el('#nsHire').value + 'T00:00:00') : null,
+    annualCarry: parseFloat(el('#nsCarry').value) || 0,
+    annualCurrent: parseFloat(el('#nsCur').value) || 0,
+    compRemaining: parseFloat(el('#nsComp').value) || 0
+  }).then(function(){
+    toast('已建立 ' + name, 'success');
+    ['#nsName','#nsHire'].forEach(function(i){ el(i).value = ''; });
+    ['#nsCarry','#nsCur','#nsComp'].forEach(function(i){ el(i).value = '0'; });
+    refreshUsers();
+  }).catch(function(e){ toast(e.message,'error'); })
+    .then(function(){ b.disabled = false; b.textContent = '建立'; });
+};
+
+/* ---------- 帳號管理 ---------- */
+function renderAccounts(){
+  Promise.all([T.listAccounts(), T.listStaff()]).then(function(r){
+    var accs = r[0], staff = r[1];
+    var nameOf = {};
+    staff.forEach(function(s){ nameOf[s.sid] = s.name; });
+    var box = el('#acList');
+    if(!accs.length){ box.innerHTML = '<div class="empty">還沒有人註冊帳號。</div>'; return; }
+    box.innerHTML = '';
+    accs.forEach(function(a){
+      var d = document.createElement('div'); d.className = 'urow';
+      d.innerHTML = '<div class="uhd"><b>' + esc(a.name || nameOf[a.sid] || '（還沒填姓名）') + '</b>' +
+        '<span class="uid">ID：' + esc(a.loginId) + '</span></div>';
+      var row = document.createElement('div'); row.className = 'ugrid';
+      var rp = document.createElement('button');
+      rp.className = 'btn ghost sm'; rp.textContent = '重設密碼';
+      rp.onclick = function(){
+        var pw = prompt('幫「' + (a.name || a.loginId) + '」設定新密碼（至少 4 個字元）');
+        if(pw === null) return;
+        T.resetPassword(a.loginId, pw)
+          .then(function(){ toast('密碼已重設為：' + pw, 'success'); })
+          .catch(function(e){ toast(e.message,'error'); });
+      };
+      var del = document.createElement('button');
+      del.className = 'btn no sm'; del.textContent = '刪除帳號';
+      del.onclick = function(){
+        if(!confirm('確定刪除帳號「' + a.loginId + '」？\n\n她將無法登入。名單、時數、請假紀錄都會保留。')) return;
+        T.deleteAccount(a.loginId)
+          .then(function(){ toast('已刪除','success'); renderAccounts(); })
+          .catch(function(e){ toast(e.message,'error'); });
+      };
+      row.appendChild(rp); row.appendChild(del);
+      d.appendChild(row);
+      box.appendChild(d);
+    });
+  }).catch(function(e){ toast(e.message,'error'); });
+}
+
 /* ---------- 時數 ---------- */
 function renderBal(){
-  var staff = S.users.filter(function(u){ return u.role === T.ROLES.STAFF; });
+  var staff = S.users;
   if(!staff.length){ el('#bList').innerHTML = '<div class="empty">還沒有秘書身分的人員。</div>'; return; }
   Promise.all(staff.map(function(u){
-    return T.getBalance(u.uid).then(function(b){ return { u:u, b:b }; });
+    return T.getBalance(u.sid).then(function(b){ return { u:u, b:b }; });
   })).then(function(rows){
     el('#bList').innerHTML = rows.map(function(r){
-      return '<div class="urow"><div class="uhd"><b>' + esc(r.u.name || r.u.loginId) + '</b></div>' +
+      return '<div class="urow"><div class="uhd"><b>' + esc(r.u.name) + '</b>' +
+        (r.u.active === false ? '<span class="st off">已離職</span>' : '') + '</div>' +
         '<div class="bgrid">' +
-          '<div class="bx"><div class="k">特休剩餘</div><div class="v">' + (r.b.annualRemaining || 0) + '</div></div>' +
+          '<div class="bx"><div class="k">特休剩餘（合計）</div><div class="v">' + (r.b.annualRemaining || 0) + '</div></div>' +
           '<div class="bx"><div class="k">補休剩餘</div><div class="v">' + (r.b.compRemaining || 0) + '</div></div>' +
+          '<div class="bx"><div class="k">└ 去年遞延（先扣）</div><div class="v" style="color:var(--warn)">' + (r.b.annualCarry || 0) + '</div></div>' +
+          '<div class="bx"><div class="k">└ 今年新給</div><div class="v">' + (r.b.annualCurrent || 0) + '</div></div>' +
           '<div class="bx"><div class="k">今年已用特休</div><div class="v">' + (r.b.annualUsedYTD || 0) + '</div></div>' +
           '<div class="bx"><div class="k">今年已用補休</div><div class="v">' + (r.b.compUsedYTD || 0) + '</div></div>' +
         '</div></div>';
     }).join('');
   });
 }
+
+el('#gB').onclick = function(){
+  var uid = el('#gU').value, hrs = parseFloat(el('#gH').value), exp = el('#gE').value;
+  if(!uid) return toast('請選對象','error');
+  if(isNaN(hrs)) return toast('請填明年要給幾小時','error');
+  if(!confirm('確定執行？今年沒休完的會轉成遞延，這個動作會改動餘額。')) return;
+  var b = el('#gB'); b.disabled = true; b.textContent = '執行中…';
+  T.grantAnnualYear(uid, hrs, exp ? new Date(exp + 'T00:00:00') : null).then(function(r){
+    var out = el('#gOut'); out.classList.remove('hide');
+    out.innerHTML = '今年沒休完的 <b>' + r.carried + '</b> 小時已轉成遞延。' +
+      (r.mustPayHours > 0
+        ? '<br><span style="color:var(--warn)">注意：上一批遞延還有 <b>' + r.mustPayHours +
+          '</b> 小時沒休完，依勞基法應折發工資。</span>'
+        : '<br>沒有需要折發工資的時數。');
+    toast('年度換算完成','success'); renderBal();
+  }).catch(function(e){ toast(e.message,'error'); })
+    .then(function(){ b.disabled = false; b.textContent = '執行年度換算'; });
+};
 
 el('#aB').onclick = function(){
   var uid = el('#aU').value, kind = el('#aK').value;
@@ -409,6 +536,11 @@ el('#aB').onclick = function(){
   var b = el('#aB'); b.disabled = true; b.textContent = '套用中…';
   T.getBalance(uid).then(function(before){
     var patch = {}; patch[kind] = roundHalf(val); patch.updatedAt = T.serverTimestamp();
+    if(kind === 'annualCarry' || kind === 'annualCurrent'){
+      var carry   = kind === 'annualCarry'   ? roundHalf(val) : (before.annualCarry   || 0);
+      var current = kind === 'annualCurrent' ? roundHalf(val) : (before.annualCurrent || 0);
+      patch.annualRemaining = roundHalf(carry + current);
+    }
     return T.setMerge(T.COL.balances, uid, patch).then(function(){
       var bf = {}; bf[kind] = before[kind] || 0;
       var af = {}; af[kind] = roundHalf(val); af.note = note;
