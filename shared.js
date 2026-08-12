@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '2.0.0';
+var SHARED_VERSION = '2.1.0';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -34,6 +34,7 @@ var MONTHLY_OT_CAP = 46;
 var ROLES = { STAFF:'staff', VIEWER:'viewer', ADMIN:'admin' };
 var ROLE_LABEL = { staff:'秘書', viewer:'檢視者', admin:'秘書長' };
 var ADMIN_PASSWORD = 'asper0423';
+var VIEW_PASSWORD  = 'physics2026';
 
 var LEAVE_TYPES = [
   { id:'annual',   label:'特別休假',   deducts:'annual' },
@@ -198,6 +199,14 @@ function adminLogin(pw) {
   return true;
 }
 function adminLogout() { _currentUser = null; }
+
+/** 檢視台：輸入密碼進入，只能讀不能改 */
+function viewerLogin(pw) {
+  if (String(pw) !== VIEW_PASSWORD) return false;
+  _currentUser = { uid: 'viewer', name: '檢視者', loginId: 'viewer', role: ROLES.VIEWER };
+  return true;
+}
+function viewerLogout() { _currentUser = null; }
 
 /** 監聽登入狀態，補上 users/{uid}。user.needsName 代表還沒填中文姓名 */
 function watchAuth(cb) {
@@ -603,10 +612,12 @@ return {
   toDate: toDate, ym: ym, fmtDate: fmtDate, fmtDateTime: fmtDateTime,
   roundHalf: roundHalf, splitByMonth: splitByMonth,
   annualLeaveDays: annualLeaveDays, annualLeaveHours: annualLeaveHours,
-  idToEmail: idToEmail, currentUser: currentUser, ADMIN_PASSWORD: ADMIN_PASSWORD,
+  idToEmail: idToEmail, currentUser: currentUser,
+  ADMIN_PASSWORD: ADMIN_PASSWORD, VIEW_PASSWORD: VIEW_PASSWORD,
   isAdmin: isAdmin, isStaff: isStaff, canApply: canApply,
   loginOrRegister: loginOrRegister, setDisplayName: setDisplayName,
   adminLogin: adminLogin, adminLogout: adminLogout,
+  viewerLogin: viewerLogin, viewerLogout: viewerLogout,
   signOut: signOut, changePassword: changePassword, watchAuth: watchAuth,
   listUsers: listUsers, getUser: getUser, upsertUser: upsertUser, setMerge: setMerge,
   getBalance: getBalance, watchBalance: watchBalance,
