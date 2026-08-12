@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '2.1.0';
+var SHARED_VERSION = '2.2.0';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -496,36 +496,47 @@ function snapList(snap) {
   snap.forEach(function (d) { var o = d.data(); o.id = d.id; out.push(o); });
   return out;
 }
+/** 錯誤統一往外丟，頁面自己決定怎麼顯示 */
+var _onError = function (e) { console.error('[TPS]', e); };
+function setErrorHandler(fn) { _onError = fn; }
+function ms(v) { return (v && v.toMillis) ? v.toMillis() : 0; }
+
+/* 注意：全部只用單一 where，排序在前端做。
+   where + 不同欄位的 orderBy 會要求建複合索引，沒建就整個查詢失敗。 */
 function watchMyLeaves(cb, n) {
+  var limit = n || 50;
   return db.collection(COL.leave)
     .where('uid', '==', currentUser().uid)
-    .orderBy('createdAt', 'desc').limit(n || 50)
-    .onSnapshot(function (s) { cb(snapList(s)); },
-                function (e) { console.error('[TPS] watchMyLeaves', e); });
+    .onSnapshot(function (s) {
+      var list = snapList(s).sort(function (a, b) { return ms(b.createdAt) - ms(a.createdAt); });
+      cb(list.slice(0, limit));
+    }, function (e) { _onError(e); });
 }
 function watchPending(cb) {
   return db.collection(COL.leave)
-    .where('status', '==', STATUS.PENDING).orderBy('createdAt', 'asc')
-    .onSnapshot(function (s) { cb(snapList(s)); },
-                function (e) { console.error('[TPS] watchPending', e); });
+    .where('status', '==', STATUS.PENDING)
+    .onSnapshot(function (s) {
+      cb(snapList(s).sort(function (a, b) { return ms(a.createdAt) - ms(b.createdAt); }));
+    }, function (e) { _onError(e); });
 }
 function watchPendingOvertime(cb) {
   return db.collection(COL.overtime)
-    .where('status', '==', STATUS.PENDING).orderBy('createdAt', 'asc')
-    .onSnapshot(function (s) { cb(snapList(s)); },
-                function (e) { console.error('[TPS] watchPendingOvertime', e); });
+    .where('status', '==', STATUS.PENDING)
+    .onSnapshot(function (s) {
+      cb(snapList(s).sort(function (a, b) { return ms(a.createdAt) - ms(b.createdAt); }));
+    }, function (e) { _onError(e); });
 }
 function fetchLeavesByYear(y) {
   return db.collection(COL.leave)
     .where('startAt', '>=', TS.fromDate(new Date(y, 0, 1)))
     .where('startAt', '<',  TS.fromDate(new Date(y + 1, 0, 1)))
-    .orderBy('startAt', 'asc').get().then(snapList);
+    .get().then(snapList).then(function(l){ return l.sort(function(a,b){ return toDate(a.startAt)-toDate(b.startAt); }); });
 }
 function fetchOvertimeByYear(y) {
   return db.collection(COL.overtime)
     .where('date', '>=', TS.fromDate(new Date(y, 0, 1)))
     .where('date', '<',  TS.fromDate(new Date(y + 1, 0, 1)))
-    .orderBy('date', 'asc').get().then(snapList);
+    .get().then(snapList).then(function(l){ return l.sort(function(a,b){ return toDate(a.date)-toDate(b.date); }); });
 }
 
 /* ---------- 9. 年度統計 ---------- */
@@ -627,6 +638,7 @@ return {
   watchPendingOvertime: watchPendingOvertime,
   fetchLeavesByYear: fetchLeavesByYear, fetchOvertimeByYear: fetchOvertimeByYear,
   buildYearMatrix: buildYearMatrix, writeAudit: writeAudit,
+  setErrorHandler: setErrorHandler,
   el: el, els: els, esc: esc, toast: toast
 };
 })();
