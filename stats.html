@@ -88,6 +88,19 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 
 
 
+
+/* ===== 防爆版 ===== */
+*{min-width:0}
+.card,.item,.urow{overflow-wrap:anywhere}
+input,select,textarea{max-width:100%;width:100%;
+  -webkit-appearance:none;appearance:none;background-clip:padding-box}
+input[type=date]{min-height:46px;line-height:1.2;display:block;text-align:left}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),
+  linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 52%,calc(100% - 12px) 52%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px}
+.tabs>*,.ugrid>*,.bgrid>*,.arow>*{min-width:0}
+
 /* --- 檢視台專屬 --- */
 .wrap{max-width:720px;padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}
@@ -96,7 +109,7 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 .tb[aria-selected="true"]{color:var(--gold-b);box-shadow:var(--halo-hi)}
 .ro{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim2);
   background:rgba(255,255,255,.04);padding:4px 11px;border-radius:20px}
-.filters{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px;
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 16px;
   border-bottom:1px solid var(--line)}
 .filters select{font-size:14px;padding:9px 11px}
 .filters .full{grid-column:1 / -1}
@@ -105,17 +118,18 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 .itop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
 .inm{font-weight:700;font-size:15px}
 .ity{color:var(--gold-b);font-size:13.5px}
-.ih{margin-left:auto;font-family:var(--mono);font-weight:700;color:var(--gold-b);font-size:14px}
+.ih{margin-left:auto;font-family:var(--mono);font-weight:700;color:var(--gold-b);
+  font-size:14px;white-space:nowrap;flex:none}
 .im{font-family:var(--mono);font-size:12px;color:var(--dim)}
 .inn{font-size:12.5px;color:var(--dim);margin-top:4px}
 .flg{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;font-weight:700;
   background:rgba(229,168,63,.16);color:var(--warn)}
-.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:16px 18px}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:16px}
 .sx{background:var(--bg);border-radius:10px;padding:12px;text-align:center;
   box-shadow:0 0 0 1px rgba(255,255,255,.05)}
 .sx .k{font-size:11px;color:var(--dim)}
-.sx .v{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold-b);
-  text-shadow:0 0 14px rgba(217,169,60,.4);line-height:1.25}
+.sx .v{font-family:var(--mono);font-size:21px;font-weight:700;color:var(--gold-b);
+  text-shadow:0 0 14px rgba(217,169,60,.4);line-height:1.5;white-space:nowrap}
 .tw{overflow-x:auto;padding:0 4px 4px}
 table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
 th{text-align:right;padding:9px 10px;border-bottom:1px solid var(--line);color:var(--dim);
@@ -195,9 +209,8 @@ tr:last-child td{border-bottom:none}
 </div></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="shared.js?v=2.2.0"></script>
+<script src="shared.js"></script>
 <script>
 
 var T = window.TPS;
