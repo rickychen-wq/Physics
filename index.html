@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>請假加班系統 — 台灣物理學會行政室</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070910; --bg2:#0C1018; --panel:#111726; --panel2:#161D2E;
+  --gold:#D4A537; --gold-b:#F2D07A; --gold-dim:rgba(212,165,55,.16);
+  --txt:#E7EAF2; --dim:#8B93A8; --dim2:#5E667A;
+  --ok:#4FB477; --warn:#E0A33E; --bad:#D9564F;
+  --r:6px;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Noto Sans TC',system-ui,sans-serif;
+  --halo:0 0 0 1px var(--gold-dim), 0 0 28px rgba(212,165,55,.10), inset 0 1px 0 rgba(255,255,255,.03);
+  --halo-hi:0 0 0 1px rgba(212,165,55,.45), 0 0 40px rgba(212,165,55,.22), inset 0 1px 0 rgba(255,255,255,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--sans); color:var(--txt); font-size:15px; line-height:1.65;
+  background:
+    radial-gradient(900px 500px at 50% -10%, rgba(212,165,55,.10), transparent 60%),
+    linear-gradient(180deg,var(--bg2),var(--bg));
+  background-attachment:fixed; min-height:100dvh;
+}
+body::after{
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:1; opacity:.35;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,transparent 1px 3px);
+}
+body>*{position:relative; z-index:2}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+h1,h2,h3{font-weight:700; line-height:1.3}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+.hide{display:none !important}
+
+/* ===== 登入 ===== */
+#login{min-height:100dvh; display:grid; place-items:center; padding:24px}
+.lcard{
+  width:100%; max-width:400px; background:var(--panel);
+  border-radius:12px; box-shadow:var(--halo); padding:38px 32px;
+}
+.brand{font-family:var(--mono); font-size:11px; letter-spacing:.28em; color:var(--gold); margin-bottom:10px}
+.lcard h1{font-size:22px; letter-spacing:.02em}
+.lcard .sub{color:var(--dim); font-size:13px; margin:6px 0 26px}
+.seg{display:flex; gap:4px; background:var(--bg); padding:4px; border-radius:var(--r); margin-bottom:22px}
+.seg button{
+  flex:1; background:none; border:none; padding:8px; border-radius:4px;
+  color:var(--dim); cursor:pointer; font-size:13.5px; font-weight:500;
+}
+.seg button[aria-selected="true"]{background:var(--gold); color:#1A1206; font-weight:700}
+
+/* ===== 版面 ===== */
+header.top{background:rgba(9,12,20,.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--gold-dim)}
+.top-in{max-width:1140px; margin:0 auto; padding:14px 22px; display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+.top .org{font-family:var(--mono); font-size:10.5px; letter-spacing:.18em; color:var(--gold); text-transform:uppercase}
+.top .title{font-size:16px; font-weight:700; letter-spacing:.03em}
+.spacer{flex:1}
+.who{display:flex; align-items:center; gap:10px; font-size:13px}
+.avatar{
+  width:32px; height:32px; border-radius:50%; display:grid; place-items:center;
+  background:linear-gradient(145deg,var(--gold),#9C7620); color:#1A1206;
+  font-weight:700; font-size:13px; box-shadow:0 0 16px rgba(212,165,55,.4);
+}
+.linkbtn{background:none; border:1px solid var(--gold-dim); color:var(--dim); padding:5px 12px; border-radius:var(--r); font-size:12.5px; cursor:pointer}
+.linkbtn:hover{color:var(--gold); border-color:var(--gold)}
+
+main{max-width:1140px; margin:0 auto; padding:26px 22px 90px}
+.cols{display:grid; grid-template-columns:1fr 344px; gap:24px; align-items:start}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+
+.panel{background:var(--panel); border-radius:10px; box-shadow:var(--halo); transition:box-shadow .3s}
+.panel:hover{box-shadow:var(--halo-hi)}
+.phd{padding:15px 20px; border-bottom:1px solid var(--gold-dim); display:flex; align-items:center; gap:10px}
+.phd h2{font-size:14.5px; letter-spacing:.04em}
+.pbd{padding:20px}
+.unit{margin-left:auto; font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--dim2); text-transform:uppercase}
+
+.tabs{display:flex; gap:6px; margin-bottom:18px}
+.tab{background:var(--panel); border:none; border-radius:var(--r); padding:9px 18px; cursor:pointer; color:var(--dim); font-size:14px; font-weight:500; box-shadow:0 0 0 1px rgba(255,255,255,.05)}
+.tab[aria-selected="true"]{color:var(--gold-b); box-shadow:0 0 0 1px rgba(212,165,55,.5), 0 0 22px rgba(212,165,55,.18)}
+
+/* ===== 表單 ===== */
+.field{margin-bottom:17px}
+label.lb{display:block; font-size:12.5px; font-weight:500; color:var(--dim); margin-bottom:7px; letter-spacing:.03em}
+label.lb .req{color:var(--gold); margin-left:3px}
+.hint{font-size:12px; color:var(--dim2); margin-top:6px}
+input[type=text],input[type=password],input[type=date],input[type=time],input[type=number],select,textarea{
+  width:100%; padding:10px 12px; background:var(--bg); color:var(--txt);
+  border:1px solid rgba(255,255,255,.09); border-radius:var(--r);
+}
+input[type=number],input[type=date],input[type=time]{font-family:var(--mono)}
+textarea{min-height:74px; resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--gold); outline:none; box-shadow:0 0 0 3px rgba(212,165,55,.15)}
+::placeholder{color:var(--dim2)}
+.row{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+@media(max-width:560px){.row{grid-template-columns:1fr}}
+.chips{display:flex; flex-wrap:wrap; gap:7px}
+.chip{background:var(--bg); border:1px solid rgba(255,255,255,.09); border-radius:var(--r); padding:8px 14px; cursor:pointer; font-size:13.5px; color:var(--dim)}
+.chip[aria-pressed="true"]{color:var(--gold-b); border-color:transparent; box-shadow:0 0 0 1px rgba(212,165,55,.55), 0 0 18px rgba(212,165,55,.22); background:rgba(212,165,55,.08)}
+.switch{display:flex; align-items:center; gap:9px; font-size:14px; cursor:pointer; color:var(--txt)}
+.switch input{width:17px; height:17px; accent-color:var(--gold)}
+.btn{
+  background:linear-gradient(145deg,var(--gold-b),var(--gold)); color:#1A1206; border:none;
+  border-radius:var(--r); padding:11px 24px; font-weight:700; cursor:pointer; font-size:14.5px;
+  box-shadow:0 0 22px rgba(212,165,55,.28);
+}
+.btn:hover{box-shadow:0 0 34px rgba(212,165,55,.45)}
+.btn:disabled{background:#2A3040; color:var(--dim2); box-shadow:none; cursor:not-allowed}
+.btn.ghost{background:none; color:var(--dim); box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+.btn.ghost:hover{color:var(--gold); box-shadow:0 0 0 1px var(--gold)}
+.btn.sm{padding:6px 13px; font-size:12.5px}
+.btn.wide{width:100%}
+
+/* ===== 簽名元素：時數量尺 ===== */
+.gauge{margin-bottom:22px}
+.gauge:last-child{margin-bottom:0}
+.ghd{display:flex; align-items:baseline; gap:8px; margin-bottom:10px}
+.gname{font-size:13px; color:var(--dim); letter-spacing:.05em}
+.gval{margin-left:auto; font-size:24px; font-weight:700; color:var(--gold-b); text-shadow:0 0 18px rgba(212,165,55,.5)}
+.gval small{font-size:11px; color:var(--dim2); font-weight:400; margin-left:3px; text-shadow:none}
+.ruler{position:relative; height:36px; background:var(--bg); border-radius:4px; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.rfill{position:absolute; inset:0 auto 0 0; width:0; background:linear-gradient(180deg,var(--gold-b),var(--gold)); box-shadow:0 0 20px rgba(212,165,55,.5); transition:width .4s cubic-bezier(.4,0,.2,1)}
+.rtake{position:absolute; top:0; bottom:0; width:0; transition:width .4s cubic-bezier(.4,0,.2,1),left .4s cubic-bezier(.4,0,.2,1);
+  background:repeating-linear-gradient(45deg,rgba(20,24,34,.82) 0 5px,rgba(20,24,34,.45) 5px 10px)}
+.rticks{position:absolute; inset:0; display:flex; pointer-events:none}
+.rticks span{flex:1; border-right:1px solid rgba(0,0,0,.28)}
+.rticks span:last-child{border-right:none}
+.rticks span.major{border-right-color:rgba(0,0,0,.6)}
+.gfoot{display:flex; justify-content:space-between; margin-top:6px; font-family:var(--mono); font-size:10px; color:var(--dim2)}
+.tnote{margin-top:9px; font-size:12.5px; color:var(--warn)}
+.tnote b{font-family:var(--mono)}
+
+/* ===== 紀錄 ===== */
+.rec{padding:14px 20px; border-bottom:1px solid rgba(255,255,255,.05)}
+.rec:last-child{border-bottom:none}
+.rtop{display:flex; align-items:center; gap:9px; margin-bottom:5px; flex-wrap:wrap}
+.rtype{font-weight:700; font-size:14px}
+.rwhen{font-family:var(--mono); font-size:12px; color:var(--dim)}
+.rhours{margin-left:auto; font-family:var(--mono); font-weight:700; font-size:14px; color:var(--gold-b)}
+.rnote{font-size:12.5px; color:var(--dim); margin-top:4px}
+.tag{font-size:10.5px; padding:3px 9px; border-radius:3px; font-weight:700; letter-spacing:.06em; white-space:nowrap}
+.tag.pending{background:rgba(224,163,62,.14); color:var(--warn); box-shadow:0 0 12px rgba(224,163,62,.2)}
+.tag.approved{background:rgba(79,180,119,.14); color:var(--ok)}
+.tag.rejected{background:rgba(217,86,79,.14); color:var(--bad)}
+.tag.cancelled{background:rgba(139,147,168,.12); color:var(--dim)}
+.empty{padding:44px 20px; text-align:center; color:var(--dim2); font-size:13.5px}
+.err{background:rgba(217,86,79,.09); color:#F08D87; padding:10px 13px; border-radius:var(--r); font-size:13.5px; margin-bottom:16px; box-shadow:0 0 0 1px rgba(217,86,79,.3)}
+.info{background:rgba(212,165,55,.07); color:var(--gold-b); padding:10px 13px; border-radius:var(--r); font-size:13px; margin-bottom:16px; box-shadow:0 0 0 1px var(--gold-dim)}
+.toast{position:fixed; left:50%; bottom:26px; transform:translate(-50%,16px); background:var(--panel2); color:var(--txt); padding:12px 22px; border-radius:var(--r); font-size:14px; opacity:0; transition:.28s; z-index:99; box-shadow:var(--halo-hi)}
+.toast.is-in{opacity:1; transform:translate(-50%,0)}
+.toast--error{color:#F08D87}
+.toast--success{color:var(--ok)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<section id="login">
+  <div class="lcard">
+    <div class="brand">TPS · 行政室</div>
+    <h1>請假加班系統</h1>
+    <p class="sub">用自己設定的 ID 和密碼登入。</p>
+
+    <div class="seg" role="tablist">
+      <button id="segIn" role="tab" aria-selected="true">登入</button>
+      <button id="segUp" role="tab" aria-selected="false">建立帳號</button>
+    </div>
+
+    <div id="loginErr" class="err hide"></div>
+
+    <div class="field">
+      <label class="lb" for="lid">ID<span class="req">*</span></label>
+      <input type="text" id="lid" autocomplete="username" autocapitalize="off" placeholder="英文或數字，例如 sasa">
+    </div>
+    <div class="field">
+      <label class="lb" for="lpw">密碼<span class="req">*</span></label>
+      <input type="password" id="lpw" autocomplete="current-password">
+    </div>
+    <div class="field hide" id="nameWrap">
+      <label class="lb" for="lname">中文全名<span class="req">*</span></label>
+      <input type="text" id="lname" placeholder="例如 楊綺萍">
+      <div class="hint">秘書長的後台看到的是這個名字，請填真實姓名。</div>
+    </div>
+
+    <button class="btn wide" id="doAuth">登入</button>
+  </div>
+</section>
+
+<div id="pendingScreen" class="hide" style="min-height:100dvh;display:grid;place-items:center;padding:24px">
+  <div class="lcard" style="text-align:center">
+    <div class="brand">TPS · 行政室</div>
+    <h1 style="font-size:19px;margin-bottom:10px">帳號已建立</h1>
+    <p class="sub" style="margin-bottom:24px">還要等秘書長開通身分才能使用。<br>開通後重新登入即可。</p>
+    <button class="btn ghost wide" id="pendingOut">登出</button>
+  </div>
+</div>
+
+<div id="app" class="hide">
+<header class="top">
+  <div class="top-in">
+    <div>
+      <div class="org">社團法人台灣物理學會 行政室</div>
+      <div class="title">請假加班系統</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="who">
+      <div class="avatar" id="avatar"></div>
+      <span id="whoName"></span>
+      <button class="linkbtn" id="logoutBtn">登出</button>
+    </div>
+  </div>
+</header>
+
+<main><div class="cols">
+  <div>
+    <div class="tabs" role="tablist">
+      <button class="tab" id="tabLeave" role="tab" aria-selected="true">請假申請</button>
+      <button class="tab" id="tabOt" role="tab" aria-selected="false">加班申請</button>
+    </div>
+
+    <section class="panel" id="paneLeave">
+      <div class="phd"><h2>填寫假單</h2><span class="unit">單位：小時</span></div>
+      <div class="pbd">
+        <div id="leaveErr" class="err hide"></div>
+        <div class="field">
+          <label class="lb">假別<span class="req">*</span></label>
+          <div class="chips" id="typeChips"></div>
+        </div>
+        <div class="field hide" id="otherWrap">
+          <label class="lb" for="otherType">假別名稱<span class="req">*</span></label>
+          <input type="text" id="otherType" placeholder="例如 喪假">
+        </div>
+        <div class="field">
+          <label class="lb">起</label>
+          <div class="row"><input type="date" id="sd"><input type="time" id="st" value="09:00" step="1800"></div>
+        </div>
+        <div class="field">
+          <label class="lb">迄</label>
+          <div class="row"><input type="date" id="ed"><input type="time" id="et" value="17:00" step="1800"></div>
+        </div>
+        <div class="field">
+          <label class="lb" for="hours">請假時數<span class="req">*</span></label>
+          <input type="number" id="hours" min="0.5" step="0.5" placeholder="0">
+          <div class="hint" id="hoursHint">依上班時間 09:00–17:00（12:00–13:00 休息）自動試算，可自行修改。</div>
+        </div>
+        <div class="field">
+          <label class="switch"><input type="checkbox" id="isLate">事後補請假</label>
+          <div id="lateWrap" class="hide" style="margin-top:10px"><textarea id="lateReason" placeholder="說明未能事前請假的原因"></textarea></div>
+        </div>
+        <div class="field">
+          <label class="switch"><input type="checkbox" id="needProxy">需要職務代理人</label>
+          <div id="proxyWrap" class="hide" style="margin-top:10px"><input type="text" id="proxyName" placeholder="代理人姓名"></div>
+        </div>
+        <button class="btn" id="submitLeave">送出假單</button>
+      </div>
+    </section>
+
+    <section class="panel hide" id="paneOt">
+      <div class="phd"><h2>填寫加班單</h2><span class="unit">單位：小時</span></div>
+      <div class="pbd">
+        <div class="info">加班前須先在 LINE 群組通知秘書長（並知會理事長、副理事長）並獲得同意。</div>
+        <div id="otErr" class="err hide"></div>
+        <div class="field">
+          <label class="lb" for="otDate">加班日期<span class="req">*</span></label>
+          <input type="date" id="otDate">
+        </div>
+        <div class="field">
+          <label class="lb">時間</label>
+          <div class="row"><input type="time" id="otStart" value="17:00" step="1800"><input type="time" id="otEnd" value="19:00" step="1800"></div>
+        </div>
+        <div class="field">
+          <label class="lb" for="otHours">加班時數<span class="req">*</span></label>
+          <input type="number" id="otHours" min="0.5" step="0.5" placeholder="0">
+          <div class="hint">勞基法：單月延長工時上限 46 小時。超過會標記提醒秘書長。</div>
+        </div>
+        <div class="field">
+          <label class="lb" for="otReason">加班事由</label>
+          <textarea id="otReason" placeholder="處理什麼工作"></textarea>
+        </div>
+        <button class="btn" id="submitOt">送出加班單</button>
+      </div>
+    </section>
+  </div>
+
+  <div>
+    <section class="panel" style="margin-bottom:22px">
+      <div class="phd"><h2>我的時數</h2><span class="unit">即時</span></div>
+      <div class="pbd">
+        <div class="gauge">
+          <div class="ghd"><span class="gname">特別休假</span><span class="gval num"><span id="annualNum">0</span><small>小時</small></span></div>
+          <div class="ruler"><div class="rfill" id="annualFill"></div><div class="rtake" id="annualTake"></div><div class="rticks" id="annualTicks"></div></div>
+          <div class="gfoot"><span>0</span><span id="annualMax">0</span></div>
+          <div class="tnote hide" id="annualNote"></div>
+        </div>
+        <div class="gauge">
+          <div class="ghd"><span class="gname">加班補休</span><span class="gval num"><span id="compNum">0</span><small>小時</small></span></div>
+          <div class="ruler"><div class="rfill" id="compFill"></div><div class="rtake" id="compTake"></div><div class="rticks" id="compTicks"></div></div>
+          <div class="gfoot"><span>0</span><span id="compMax">0</span></div>
+          <div class="tnote hide" id="compNote"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="phd"><h2>我的申請</h2><span class="unit">近 50 筆</span></div>
+      <div id="recList"><div class="empty">還沒有紀錄。</div></div>
+    </section>
+  </div>
+</div></main>
+</div>
+
+<script type="module">
+import {
+  SHARED_VERSION, LEAVE_TYPES, STATUS, STATUS_LABEL,
+  signInWithId, registerAccount, signOut, watchAuth, canApply, isPending,
+  submitLeave, submitOvertime, cancelLeave,
+  watchBalance, watchMyLeaves, getBalance,
+  leaveTypeLabel, fmtDateTime, roundHalf, toast, el,
+} from './shared.js?v=1.1.0';
+
+const S = { mode:'in', tab:'leave', type:'annual',
+  balance:{annualRemaining:0,compRemaining:0}, peak:{annual:1,comp:1}, unsub:[], busy:false };
+
+const showErr=(id,msg)=>{const b=el('#'+id); if(!msg){b.classList.add('hide');return;} b.textContent=msg; b.classList.remove('hide');};
+
+/* ---- 登入 / 註冊切換 ---- */
+const setMode = m => {
+  S.mode = m;
+  el('#segIn').setAttribute('aria-selected', m==='in');
+  el('#segUp').setAttribute('aria-selected', m==='up');
+  el('#nameWrap').classList.toggle('hide', m!=='up');
+  el('#doAuth').textContent = m==='in' ? '登入' : '建立帳號';
+  el('#lpw').setAttribute('autocomplete', m==='in' ? 'current-password' : 'new-password');
+  showErr('loginErr','');
+};
+el('#segIn').onclick=()=>setMode('in');
+el('#segUp').onclick=()=>setMode('up');
+
+const AUTH_ERR = {
+  'auth/invalid-credential':'ID 或密碼不正確。',
+  'auth/email-already-in-use':'這個 ID 已經有人用了，換一個。',
+  'auth/weak-password':'密碼至少 6 個字元。',
+  'auth/too-many-requests':'嘗試次數過多，請稍後再試。',
+  'auth/network-request-failed':'連線失敗，檢查網路後再試。',
+};
+
+el('#doAuth').onclick = async () => {
+  if(S.busy) return;
+  showErr('loginErr','');
+  const btn=el('#doAuth'); const id=el('#lid').value, pw=el('#lpw').value;
+  if(!id.trim()||!pw) return showErr('loginErr','請填寫 ID 和密碼。');
+  S.busy=true; btn.disabled=true; btn.textContent='處理中…';
+  try{
+    if(S.mode==='in') await signInWithId(id,pw);
+    else await registerAccount(id,pw,el('#lname').value);
+  }catch(e){
+    showErr('loginErr', AUTH_ERR[e.code] || e.message || '操作失敗，請再試一次。');
+  }finally{ S.busy=false; btn.disabled=false; setMode(S.mode); }
+};
+['#lid','#lpw','#lname'].forEach(i=>el(i).addEventListener('keydown',e=>{if(e.key==='Enter')el('#doAuth').click();}));
+el('#logoutBtn').onclick=()=>signOut();
+el('#pendingOut').onclick=()=>signOut();
+
+watchAuth(user=>{
+  S.unsub.forEach(f=>f()); S.unsub=[];
+  const show = id => ['#login','#pendingScreen','#app'].forEach(s=>el(s).classList.toggle('hide', s!==id));
+  if(!user){ show('#login'); el('#lpw').value=''; return; }
+  if(user.orphan || isPending()){ show('#pendingScreen'); return; }
+  show('#app');
+  el('#whoName').textContent=user.name||user.loginId;
+  el('#avatar').textContent=(user.name||'?').slice(-2,-1)||'?';
+  if(!canApply()){
+    el('#paneLeave').innerHTML='<div class="empty">這個帳號是檢視身分，可以查看紀錄但不能送出申請。</div>';
+    el('#tabOt').classList.add('hide');
+  }
+  boot(user);
+});
+
+function boot(user){
+  S.unsub.push(watchBalance(user.uid,b=>{
+    S.balance=b||{annualRemaining:0,compRemaining:0};
+    S.peak.annual=Math.max(S.peak.annual,S.balance.annualRemaining||0,1);
+    S.peak.comp=Math.max(S.peak.comp,S.balance.compRemaining||0,1);
+    drawGauges();
+  }));
+  S.unsub.push(watchMyLeaves(renderRecords));
+  getBalance(user.uid).then(b=>{
+    S.peak.annual=Math.max(b.annualRemaining||0,1);
+    S.peak.comp=Math.max(b.compRemaining||0,1);
+    drawGauges();
+  });
+}
+
+/* ---- 時數量尺 ---- */
+function ticks(box,max){
+  const n=Math.min(Math.max(Math.ceil(max),1),60);
+  box.innerHTML='';
+  for(let i=0;i<n;i++){const s=document.createElement('span'); if((i+1)%7===0)s.className='major'; box.appendChild(s);}
+}
+function drawGauges(){
+  const take=plannedDeduction();
+  [['annual',S.balance.annualRemaining||0,S.peak.annual,take.annual,'特休'],
+   ['comp',S.balance.compRemaining||0,S.peak.comp,take.comp,'補休']]
+  .forEach(([k,remain,max,want,label])=>{
+    const pct=Math.min(100,remain/max*100), wPct=Math.min(pct,want/max*100);
+    el(`#${k}Num`).textContent=remain;
+    el(`#${k}Max`).textContent=max;
+    el(`#${k}Fill`).style.width=pct+'%';
+    ticks(el(`#${k}Ticks`),max);
+    const t=el(`#${k}Take`); t.style.width=wPct+'%'; t.style.left=Math.max(0,pct-wPct)+'%';
+    const note=el(`#${k}Note`);
+    if(want>0){ note.classList.remove('hide');
+      note.innerHTML = want>remain
+        ? `這張假單需要 <b>${want}</b> 小時，${label}只剩 <b>${remain}</b> 小時。`
+        : `送出後${label}剩 <b>${roundHalf(remain-want)}</b> 小時。`;
+    } else note.classList.add('hide');
+  });
+}
+function plannedDeduction(){
+  if(S.tab!=='leave') return {annual:0,comp:0};
+  const h=roundHalf(parseFloat(el('#hours').value)||0);
+  const def=LEAVE_TYPES.find(t=>t.id===S.type);
+  return {annual:def?.deducts==='annual'?h:0, comp:def?.deducts==='comp'?h:0};
+}
+
+/* ---- 假別 ---- */
+const chipBox=el('#typeChips');
+LEAVE_TYPES.forEach(t=>{
+  const b=document.createElement('button');
+  b.className='chip'; b.type='button'; b.textContent=t.label;
+  b.setAttribute('aria-pressed',t.id===S.type);
+  b.onclick=()=>{
+    S.type=t.id;
+    [...chipBox.children].forEach((c,i)=>c.setAttribute('aria-pressed',LEAVE_TYPES[i].id===S.type));
+    el('#otherWrap').classList.toggle('hide',!t.needsText);
+    drawGauges();
+  };
+  chipBox.appendChild(b);
+});
+
+const setTab=t=>{
+  S.tab=t;
+  el('#tabLeave').setAttribute('aria-selected',t==='leave');
+  el('#tabOt').setAttribute('aria-selected',t==='ot');
+  el('#paneLeave').classList.toggle('hide',t!=='leave');
+  el('#paneOt').classList.toggle('hide',t!=='ot');
+  drawGauges();
+};
+el('#tabLeave').onclick=()=>setTab('leave');
+el('#tabOt').onclick=()=>setTab('ot');
+
+/* ---- 時數試算 ---- */
+const WINDOWS=[[9,12],[13,17]];
+function estimateHours(s,e){
+  if(!(s<e)) return 0;
+  let total=0;
+  const cur=new Date(s.getFullYear(),s.getMonth(),s.getDate());
+  const last=new Date(e.getFullYear(),e.getMonth(),e.getDate());
+  while(cur<=last){
+    const w=cur.getDay();
+    if(w>=1&&w<=5) WINDOWS.forEach(([a,b])=>{
+      const ws=new Date(cur); ws.setHours(a,0,0,0);
+      const we=new Date(cur); we.setHours(b,0,0,0);
+      const from=Math.max(ws.getTime(),s.getTime()), to=Math.min(we.getTime(),e.getTime());
+      if(to>from) total+=(to-from)/36e5;
+    });
+    cur.setDate(cur.getDate()+1);
+  }
+  return roundHalf(total);
+}
+const readDT=(d,t)=>(d&&t)?new Date(`${d}T${t}`):null;
+function autoHours(){
+  const s=readDT(el('#sd').value,el('#st').value), e=readDT(el('#ed').value,el('#et').value);
+  if(!s||!e||e<=s) return;
+  const est=estimateHours(s,e);
+  el('#hours').value=est||'';
+  el('#hoursHint').textContent=`試算 ${est} 小時，可自行修改。`;
+  drawGauges();
+}
+['#st','#ed','#et'].forEach(id=>el(id).onchange=autoHours);
+el('#sd').onchange=()=>{ if(!el('#ed').value||el('#ed').value<el('#sd').value) el('#ed').value=el('#sd').value; autoHours(); };
+el('#hours').oninput=drawGauges;
+el('#isLate').onchange=e=>el('#lateWrap').classList.toggle('hide',!e.target.checked);
+el('#needProxy').onchange=e=>el('#proxyWrap').classList.toggle('hide',!e.target.checked);
+
+/* ---- 送出 ---- */
+el('#submitLeave').onclick=async()=>{
+  if(S.busy) return;
+  showErr('leaveErr','');
+  const s=readDT(el('#sd').value,el('#st').value), e=readDT(el('#ed').value,el('#et').value);
+  if(!s||!e) return showErr('leaveErr','請填寫請假的起訖日期與時間。');
+  const btn=el('#submitLeave'); S.busy=true; btn.disabled=true; btn.textContent='送出中…';
+  try{
+    await submitLeave({type:S.type, otherType:el('#otherType').value, startAt:s, endAt:e,
+      hours:parseFloat(el('#hours').value), isLate:el('#isLate').checked,
+      lateReason:el('#lateReason').value, needsProxy:el('#needProxy').checked, proxyName:el('#proxyName').value});
+    toast('假單已送出，等待秘書長審核','success');
+    resetLeave();
+  }catch(err){ showErr('leaveErr',err.message); }
+  finally{ S.busy=false; btn.disabled=false; btn.textContent='送出假單'; }
+};
+function resetLeave(){
+  ['#hours','#otherType','#lateReason','#proxyName'].forEach(i=>el(i).value='');
+  el('#isLate').checked=el('#needProxy').checked=false;
+  el('#lateWrap').classList.add('hide'); el('#proxyWrap').classList.add('hide');
+  el('#hoursHint').textContent='依上班時間 09:00–17:00（12:00–13:00 休息）自動試算，可自行修改。';
+  drawGauges();
+}
+el('#submitOt').onclick=async()=>{
+  if(S.busy) return;
+  showErr('otErr','');
+  const d=el('#otDate').value;
+  if(!d) return showErr('otErr','請選擇加班日期。');
+  const btn=el('#submitOt'); S.busy=true; btn.disabled=true; btn.textContent='送出中…';
+  try{
+    const r=await submitOvertime({date:new Date(d+'T00:00:00'), startAt:readDT(d,el('#otStart').value),
+      endAt:readDT(d,el('#otEnd').value), hours:parseFloat(el('#otHours').value), reason:el('#otReason').value});
+    toast(r.overCapWarning?'加班單已送出，本月已超過 46 小時，已標記提醒秘書長':'加班單已送出，等待秘書長審核','success');
+    el('#otHours').value=''; el('#otReason').value='';
+  }catch(err){ showErr('otErr',err.message); }
+  finally{ S.busy=false; btn.disabled=false; btn.textContent='送出加班單'; }
+};
+
+function renderRecords(list){
+  const box=el('#recList');
+  if(!list.length){ box.innerHTML='<div class="empty">還沒有紀錄。</div>'; return; }
+  box.innerHTML='';
+  list.forEach(r=>{
+    const d=document.createElement('div'); d.className='rec';
+    const label=r.type==='other'&&r.otherType?r.otherType:leaveTypeLabel(r.type);
+    d.innerHTML=`
+      <div class="rtop">
+        <span class="rtype">${label}</span>
+        <span class="tag ${r.status}">${STATUS_LABEL[r.status]}</span>
+        <span class="rhours num">${r.hours} 小時</span>
+      </div>
+      <div class="rwhen">${fmtDateTime(r.startAt)} → ${fmtDateTime(r.endAt)}</div>
+      ${r.segments?.length>1?`<div class="rnote">跨月：${r.segments.map(s=>`${s.ym} ${s.hours}h`).join('、')}</div>`:''}
+      ${r.adminNote?`<div class="rnote">秘書長註記：${r.adminNote}</div>`:''}`;
+    if(r.status===STATUS.PENDING){
+      const b=document.createElement('button');
+      b.className='btn ghost sm'; b.textContent='撤銷'; b.style.marginTop='10px';
+      b.onclick=async()=>{ if(!confirm('確定撤銷這張假單？'))return;
+        try{ await cancelLeave(r.id); toast('已撤銷','success'); }catch(e){ toast(e.message,'error'); } };
+      d.appendChild(b);
+    }
+    box.appendChild(d);
+  });
+}
+
+const today=new Date().toISOString().slice(0,10);
+el('#sd').value=el('#ed').value=el('#otDate').value=today;
+setMode('in');
+console.info(`[TPS] index.html ↔ shared v${SHARED_VERSION}`);
+</script>
+</body>
+</html>
