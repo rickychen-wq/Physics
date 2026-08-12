@@ -89,7 +89,7 @@ input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
 
 
 /* --- 檢視台專屬 --- */
-.wrap{max-width:720px}
+.wrap{max-width:720px;padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}
 .tb{background:var(--card);border:none;border-radius:11px;padding:13px 8px;cursor:pointer;
   color:var(--dim);font-size:14px;font-weight:600;box-shadow:0 0 0 1px rgba(255,255,255,.05)}
@@ -197,11 +197,12 @@ tr:last-child td{border-bottom:none}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="shared.js?v=2.1.0"></script>
+<script src="shared.js?v=2.2.0"></script>
 <script>
 
 var T = window.TPS;
 var el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.roundHalf;
+T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e.code || e), 'error'); });
 var S = { tab:'lv', year:new Date().getFullYear(), leaves:[], ots:[], users:[], loaded:{} };
 
 function showErr(id,msg){ var b=el('#'+id); if(!msg){b.classList.add('hide');return;} b.textContent=msg; b.classList.remove('hide'); }
