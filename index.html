@@ -182,6 +182,34 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 .calc .after:empty{display:none}
 .calc .after b{font-family:var(--mono);color:var(--gold-b);font-size:15px}
 
+/* ===== 月曆 ===== */
+.calhd{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:11px}
+.calhd span{font-size:14px;font-weight:700;font-family:var(--mono);min-width:118px;text-align:center}
+.mv{width:34px;height:34px;border:none;border-radius:9px;background:var(--bg);color:var(--dim);
+  font-size:19px;cursor:pointer;padding:0;line-height:1;
+  box-shadow:0 0 0 1px rgba(255,255,255,.07)}
+.mv:active{color:var(--gold-b)}
+.cgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+#cHead div{text-align:center;font-size:10.5px;color:var(--dim2);padding:4px 0}
+.cd{aspect-ratio:1;border:none;border-radius:8px;background:var(--bg);color:var(--txt);
+  font-family:var(--mono);font-size:13px;cursor:pointer;padding:0;display:grid;place-items:center;
+  position:relative;box-shadow:0 0 0 1px rgba(255,255,255,.04)}
+.cd.pad{background:none;box-shadow:none;color:var(--dim2);opacity:.25}
+.cd.off{color:var(--dim2)}
+.cd.hol{color:#F5928C;background:rgba(224,96,90,.09)}
+.cd.wk{color:var(--ok);background:rgba(79,190,129,.09)}
+.cd.today{box-shadow:0 0 0 1.5px var(--dim)}
+.cd.sel{background:linear-gradient(145deg,var(--gold-b),var(--gold));color:#1C1305;
+  font-weight:700;box-shadow:0 0 14px rgba(217,169,60,.4)}
+.cd.inrange{background:rgba(217,169,60,.14);color:var(--gold-b)}
+.clegend{display:flex;flex-wrap:wrap;gap:11px;margin-top:11px;font-size:10.5px;color:var(--dim2)}
+.clegend span{display:flex;align-items:center;gap:5px}
+.clegend i{width:9px;height:9px;border-radius:3px;display:block}
+.d-off{background:#5C6478}
+.d-hol{background:#E0605A}
+.d-wk{background:#4FBE81}
+.d-sel{background:#D9A93C}
+
 /* ===== 紀錄 ===== */
 .segs{display:flex;gap:6px;padding:13px 16px;border-bottom:1px solid var(--line)}
 .segs button{flex:1;background:var(--bg);border:none;border-radius:9px;padding:9px 4px;
@@ -302,6 +330,21 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
         <div class="field hide" id="othW">
           <label class="lb" for="oth">假別名稱</label>
           <input type="text" id="oth" placeholder="例如 喪假"></div>
+        <div class="field">
+          <div class="calhd">
+            <button class="mv" id="mPrev" type="button">‹</button>
+            <span id="mTitle"></span>
+            <button class="mv" id="mNext" type="button">›</button>
+          </div>
+          <div class="cgrid" id="cHead"></div>
+          <div class="cgrid" id="cBody"></div>
+          <div class="clegend">
+            <span><i class="d-off"></i>假日</span>
+            <span><i class="d-hol"></i>國定假日</span>
+            <span><i class="d-wk"></i>補班日</span>
+            <span><i class="d-sel"></i>已選</span>
+          </div>
+        </div>
         <div class="field"><label class="lb">從</label>
           <div class="row2"><input type="date" id="sd"><input type="time" id="st" value="09:00" step="1800"></div></div>
         <div class="field"><label class="lb">到</label>
@@ -487,6 +530,7 @@ function enter(u){
   S.unsub.push(T.watchMyLeaves(function(l){ S.leaves = l; paintMonth(); renderRecs(); }));
   S.unsub.push(T.watchMyOvertime(function(l){ S.ots = l; paintMonth(); renderRecs(); }));
   S.unsub.push(T.watchMyNotices(function(l){ S.notis = l; renderNotis(); }));
+  T.loadCalendar().then(function(){ drawCal(); autoLeave(); });
 }
 
 /* ---------- 通知 ---------- */
@@ -571,6 +615,60 @@ function setTab(t){
 el('#bLeave').onclick = function(){ setTab('leave'); };
 el('#bOt').onclick = function(){ setTab('ot'); };
 
+/* ---------- 當月月曆：點日期直接填，順便看得到假日 ---------- */
+var CAL = { y:new Date().getFullYear(), m:new Date().getMonth(), pick:'start' };
+var WD = ['日','一','二','三','四','五','六'];
+el('#cHead').innerHTML = WD.map(function(w){ return '<div>' + w + '</div>'; }).join('');
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function keyOf(y,m,d){ return y + '-' + pad2(m+1) + '-' + pad2(d); }
+
+function drawCal(){
+  el('#mTitle').textContent = CAL.y + ' 年 ' + (CAL.m+1) + ' 月';
+  var first = new Date(CAL.y, CAL.m, 1).getDay();
+  var days  = new Date(CAL.y, CAL.m+1, 0).getDate();
+  var todayK = (function(){ var t=new Date(); return keyOf(t.getFullYear(),t.getMonth(),t.getDate()); })();
+  var sK = el('#sd').value, eK = el('#ed').value;
+  var box = el('#cBody'); box.innerHTML = '';
+
+  for(var i=0;i<first;i++){
+    var p = document.createElement('div'); p.className='cd pad'; box.appendChild(p);
+  }
+  for(var d=1; d<=days; d++){
+    (function(d){
+      var k = keyOf(CAL.y, CAL.m, d);
+      var dt = new Date(CAL.y, CAL.m, d);
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'cd'; b.textContent = d;
+      var t = T.dayType(dt);
+      if(t === 'holiday') b.classList.add('hol');
+      else if(t === 'workday') b.classList.add('wk');
+      else if(dt.getDay() === 0 || dt.getDay() === 6) b.classList.add('off');
+      if(k === todayK) b.classList.add('today');
+      if(k === sK || k === eK) b.classList.add('sel');
+      else if(sK && eK && k > sK && k < eK) b.classList.add('inrange');
+      b.onclick = function(){
+        if(CAL.pick === 'start' || !el('#sd').value || k < el('#sd').value){
+          el('#sd').value = k;
+          if(!el('#ed').value || el('#ed').value < k) el('#ed').value = k;
+          CAL.pick = 'end';
+        } else {
+          el('#ed').value = k;
+          CAL.pick = 'start';
+        }
+        autoLeave(); drawCal();
+      };
+      box.appendChild(b);
+    })(d);
+  }
+}
+el('#mPrev').onclick = function(){
+  CAL.m--; if(CAL.m < 0){ CAL.m = 11; CAL.y--; } drawCal();
+};
+el('#mNext').onclick = function(){
+  CAL.m++; if(CAL.m > 11){ CAL.m = 0; CAL.y++; } drawCal();
+};
+
 /* ---------- 自動算時數（不給手改） ---------- */
 function dt(d,t){ return (d && t) ? new Date(d + 'T' + t) : null; }
 var calcL = 0, calcO = 0;
@@ -615,10 +713,11 @@ function paintCalc(){
     ? '核准後加班補休增加 <b>+' + calcO + '</b> 小時'
     : '<span style="color:var(--dim2)">請選日期和起訖時間</span>';
 }
-['#st','#ed','#et'].forEach(function(i){ el(i).onchange = autoLeave; });
+['#st','#et'].forEach(function(i){ el(i).onchange = autoLeave; });
+el('#ed').onchange = function(){ autoLeave(); drawCal(); };
 el('#sd').onchange = function(){
   if(!el('#ed').value || el('#ed').value < el('#sd').value) el('#ed').value = el('#sd').value;
-  autoLeave();
+  autoLeave(); drawCal();
 };
 ['#od','#os','#oe'].forEach(function(i){ el(i).onchange = autoOt; });
 el('#late').onchange = function(e){ el('#lateW').classList.toggle('hide', !e.target.checked); };
@@ -755,7 +854,7 @@ el('#pBtn').onclick = function(){
 var td = new Date();
 var iso = td.getFullYear() + '-' + String(td.getMonth()+1).padStart(2,'0') + '-' + String(td.getDate()).padStart(2,'0');
 el('#sd').value = el('#ed').value = el('#od').value = iso;
-autoLeave(); autoOt();
+drawCal(); autoLeave(); autoOt();
 
 </script>
 </body>
