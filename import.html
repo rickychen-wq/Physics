@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A0D14">
+<title>舊資料匯入 — 請假加班系統</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0A0D14;--bg2:#0F141F;--card:#151C2B;--gold:#D9A93C;--gold-b:#F5D583;
+  --txt:#EAEDF4;--dim:#8D96AC;--dim2:#5C6478;--ok:#4FBE81;--warn:#E5A83F;--bad:#E0605A;
+  --line:rgba(217,169,60,.18);--mono:'JetBrains Mono',monospace}
+*{box-sizing:border-box;margin:0;padding:0;min-width:0}
+html{background:var(--bg)}
+body{font-family:'Noto Sans TC',system-ui,sans-serif;color:var(--txt);line-height:1.65;font-size:15px;
+  background:radial-gradient(700px 400px at 50% -5%,rgba(217,169,60,.10),transparent 60%),
+             linear-gradient(180deg,var(--bg2),var(--bg));background-attachment:fixed;min-height:100dvh;
+  padding:calc(26px + env(safe-area-inset-top)) 18px calc(50px + env(safe-area-inset-bottom))}
+.w{max-width:640px;margin:0 auto}
+.brand{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--gold);margin-bottom:9px}
+h1{font-size:23px;margin-bottom:6px}
+.sub{color:var(--dim);font-size:13.5px;margin-bottom:22px}
+.card{background:var(--card);border-radius:14px;padding:18px;margin-bottom:14px;
+  box-shadow:0 0 0 1px var(--line)}
+.card h2{font-size:15px;margin-bottom:12px}
+.step{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;
+  background:var(--gold);color:#1C1305;font-size:12px;font-weight:700;margin-right:8px;
+  font-family:var(--mono)}
+.info{background:rgba(217,169,60,.07);color:var(--gold-b);padding:12px 14px;border-radius:10px;
+  font-size:13px;line-height:1.75;margin-bottom:14px;box-shadow:0 0 0 1px var(--line)}
+ol{margin:0 0 0 20px;font-size:13.5px;color:var(--dim);line-height:2}
+ol b{color:var(--txt)}
+label.f{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
+input[type=file]{width:100%;font-size:14px;padding:13px;background:var(--bg);color:var(--dim);
+  border:1px dashed rgba(255,255,255,.15);border-radius:10px;margin-bottom:14px}
+input[type=file]::file-selector-button{background:var(--gold);color:#1C1305;border:none;
+  border-radius:8px;padding:8px 14px;font-weight:700;margin-right:12px;font-family:inherit;cursor:pointer}
+button.go{width:100%;background:linear-gradient(145deg,var(--gold-b),var(--gold));color:#1C1305;
+  border:none;border-radius:11px;padding:14px;font-weight:700;font-size:15px;cursor:pointer;
+  font-family:inherit;box-shadow:0 0 24px rgba(217,169,60,.25)}
+button.go:disabled{background:#2B3243;color:var(--dim2);box-shadow:none;cursor:not-allowed}
+button.ghost{width:100%;background:none;color:var(--dim);border:none;border-radius:11px;padding:13px;
+  font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 0 0 1px rgba(255,255,255,.13);
+  margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+th{text-align:right;padding:8px 6px;color:var(--dim);font-weight:500;font-size:11px;
+  border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.05);text-align:right;
+  font-family:var(--mono);color:var(--gold-b)}
+td:first-child{font-family:'Noto Sans TC';color:var(--txt);font-weight:600}
+tr.tot td{color:var(--txt);font-weight:700;border-bottom:none}
+.warn{background:rgba(229,168,63,.08);color:var(--warn);padding:11px 13px;border-radius:10px;
+  font-size:12.5px;line-height:1.75;margin-top:12px;box-shadow:0 0 0 1px rgba(229,168,63,.25)}
+.bad{background:rgba(224,96,90,.09);color:#F5928C;padding:11px 13px;border-radius:10px;
+  font-size:13px;margin-top:12px;box-shadow:0 0 0 1px rgba(224,96,90,.3)}
+#log{font-family:var(--mono);font-size:12px;line-height:1.9;margin-top:14px;white-space:pre-wrap;
+  max-height:260px;overflow-y:auto}
+.g{color:var(--ok)} .r{color:var(--bad)} .y{color:var(--warn)}
+.bar{height:6px;background:rgba(255,255,255,.07);border-radius:3px;margin-top:12px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold-b));
+  transition:width .2s}
+.hide{display:none}
+</style>
+</head>
+<body><div class="w">
+<div class="brand">TPS · 行政室</div>
+<h1>舊資料匯入</h1>
+<p class="sub">把 2024 年以來的請假與加班紀錄搬進系統。</p>
+
+<div class="card">
+  <h2><span class="step">1</span>先下載兩份 CSV</h2>
+  <ol>
+    <li>打開 <b>請假申請表單 (回覆)</b> 試算表</li>
+    <li>檔案 → 下載 → <b>逗號分隔值 (.csv)</b></li>
+    <li>對 <b>加班申請表單 (回覆)</b> 做一樣的事</li>
+  </ol>
+  <div class="info" style="margin-top:14px">下載的是「表單回應」那個分頁就對了。<br>
+    統計用的分頁不用管，程式只認第一列的欄位名稱。</div>
+</div>
+
+<div class="card">
+  <h2><span class="step">2</span>選擇檔案</h2>
+  <label class="f">請假 CSV</label>
+  <input type="file" id="fLeave" accept=".csv,text/csv">
+  <label class="f">加班 CSV</label>
+  <input type="file" id="fOt" accept=".csv,text/csv">
+  <button class="go" id="scan" disabled>檢查內容</button>
+</div>
+
+<div class="card hide" id="preview">
+  <h2><span class="step">3</span>確認</h2>
+  <div id="stats"></div>
+  <div id="issues"></div>
+  <button class="go" id="run" style="margin-top:16px">確定匯入</button>
+  <button class="ghost" id="undo">清除先前匯入的資料</button>
+  <div class="bar hide" id="barWrap"><i id="bar"></i></div>
+  <div id="log"></div>
+</div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="shared.js"></script>
+<script>
+var T = window.TPS;
+var $ = function(s){ return document.querySelector(s); };
+var PARSED = { leave:[], ot:[], issues:[] };
+
+/* ---------- CSV 解析（處理引號、換行、逗號） ---------- */
+function parseCSV(text){
+  text = text.replace(/^\uFEFF/, '');           // 去掉 Excel 的 BOM
+  var rows = [], row = [], cur = '', q = false, i = 0;
+  while(i < text.length){
+    var c = text[i];
+    if(q){
+      if(c === '"'){
+        if(text[i+1] === '"'){ cur += '"'; i += 2; continue; }
+        q = false; i++; continue;
+      }
+      cur += c; i++; continue;
+    }
+    if(c === '"'){ q = true; i++; continue; }
+    if(c === ','){ row.push(cur); cur = ''; i++; continue; }
+    if(c === '\r'){ i++; continue; }
+    if(c === '\n'){ row.push(cur); rows.push(row); row = []; cur = ''; i++; continue; }
+    cur += c; i++;
+  }
+  if(cur !== '' || row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(function(r){ return r.some(function(x){ return String(x).trim() !== ''; }); });
+}
+
+/* ---------- 依欄位名稱找欄位（不寫死順序） ---------- */
+function findCol(header, keywords, exclude){
+  for(var i = 0; i < header.length; i++){
+    var h = String(header[i] || '').replace(/\s/g,'');
+    if(!h) continue;
+    var hit = keywords.every(function(k){ return h.indexOf(k) >= 0; });
+    var bad = (exclude || []).some(function(k){ return h.indexOf(k) >= 0; });
+    if(hit && !bad) return i;
+  }
+  return -1;
+}
+
+/* ---------- 中文日期時間 ---------- */
+function parseDate(s){
+  s = String(s || '').trim();
+  if(!s) return null;
+  var m = s.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if(!m) return null;
+  return { y:+m[1], mo:+m[2], d:+m[3] };
+}
+function parseTime(s){
+  s = String(s || '').trim();
+  if(!s) return null;
+  var pm = /下午|PM/i.test(s), am = /上午|AM/i.test(s);
+  var m = s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(!m) return null;
+  var h = +m[1], mi = +m[2];
+  if(pm && h < 12) h += 12;
+  if(am && h === 12) h = 0;
+  return { h:h, mi:mi };
+}
+function mkDate(dp, tp){
+  if(!dp) return null;
+  var t = tp || { h:0, mi:0 };
+  return new Date(dp.y, dp.mo - 1, dp.d, t.h, t.mi, 0);
+}
+function num(s){
+  var v = parseFloat(String(s || '').replace(/[^\d.\-]/g,''));
+  return isNaN(v) ? 0 : v;
+}
+
+var TYPE_MAP = {
+  '特別休假':'annual', '特休':'annual',
+  '加班補休':'comp', '補休':'comp',
+  '事假':'personal', '病假':'sick', '生理假':'period',
+  '家庭照顧假':'family', '家庭照顧':'family',
+  '其他':'other'
+};
+function mapType(s){
+  s = String(s || '').replace(/\s/g,'');
+  return TYPE_MAP[s] || (s ? 'other' : null);
+}
+function mapStatus(s){
+  s = String(s || '').replace(/\s/g,'');
+  if(s.indexOf('不同意') >= 0) return 'rejected';
+  if(s.indexOf('同意') >= 0) return 'approved';
+  return 'cancelled';       // 空白的多半是撤銷或重填，不列入統計
+}
+
+/* ---------- 讀檔 ---------- */
+function readFile(f){
+  return new Promise(function(res, rej){
+    var r = new FileReader();
+    r.onload = function(){ res(r.result); };
+    r.onerror = function(){ rej(new Error('檔案讀取失敗')); };
+    r.readAsText(f, 'utf-8');
+  });
+}
+function ready(){
+  $('#scan').disabled = !($('#fLeave').files[0] || $('#fOt').files[0]);
+}
+$('#fLeave').onchange = ready;
+$('#fOt').onchange = ready;
+
+/* ---------- 檢查 ---------- */
+$('#scan').onclick = function(){
+  var b = $('#scan'); b.disabled = true; b.textContent = '讀取中…';
+  PARSED = { leave:[], ot:[], issues:[] };
+  var jobs = [];
+  if($('#fLeave').files[0]) jobs.push(readFile($('#fLeave').files[0]).then(parseLeave));
+  if($('#fOt').files[0])    jobs.push(readFile($('#fOt').files[0]).then(parseOt));
+  Promise.all(jobs).then(showPreview).catch(function(e){
+    $('#preview').classList.remove('hide');
+    $('#issues').innerHTML = '<div class="bad">讀取失敗：' + e.message + '</div>';
+  }).then(function(){ b.disabled = false; b.textContent = '重新檢查'; });
+};
+
+function parseLeave(text){
+  var rows = parseCSV(text);
+  if(!rows.length) throw new Error('請假 CSV 是空的');
+  var H = rows[0];
+  var c = {
+    stamp: findCol(H, ['時間戳記']),
+    email: findCol(H, ['電子郵件']),
+    name:  findCol(H, ['姓名']),
+    type:  findCol(H, ['假別'], ['其他']),
+    other: findCol(H, ['其他假別']),
+    annual:findCol(H, ['特別休假時數']),
+    comp:  findCol(H, ['補休時數']),
+    sd:    findCol(H, ['請假日期','起']),
+    st:    findCol(H, ['請假時間','起']),
+    ed:    findCol(H, ['請假日期','迄']),
+    et:    findCol(H, ['請假時間','迄']),
+    hours: findCol(H, ['共計時數']),
+    late:  findCol(H, ['事後請假'], ['原因']),
+    lateR: findCol(H, ['事後請假原因']),
+    proxy: findCol(H, ['職務代理人'], ['是否']),
+    needP: findCol(H, ['是否需要職務代理人']),
+    review:findCol(H, ['秘書長審核'])
+  };
+  if(c.name < 0 || c.sd < 0) throw new Error('請假 CSV 找不到「姓名」或「請假日期(起)」欄位，確認下載的是表單回應分頁');
+
+  for(var i = 1; i < rows.length; i++){
+    var r = rows[i];
+    var name = String(r[c.name] || '').trim();
+    if(!name) continue;
+    var sd = parseDate(r[c.sd]), ed = parseDate(c.ed >= 0 ? r[c.ed] : '') || sd;
+    if(!sd){ PARSED.issues.push('第 ' + (i+1) + ' 列（' + name + '）沒有請假日期，已略過'); continue; }
+    var start = mkDate(sd, parseTime(c.st >= 0 ? r[c.st] : ''));
+    var end   = mkDate(ed, parseTime(c.et >= 0 ? r[c.et] : ''));
+    if(end <= start){
+      PARSED.issues.push('第 ' + (i+1) + ' 列（' + name + ' ' + sd.y + '/' + sd.mo + '/' + sd.d +
+        '）迄時間早於起時間，已用起時間當迄時間');
+      end = new Date(start.getTime() + 3600000);
+    }
+    var hours = num(c.hours >= 0 ? r[c.hours] : 0);
+    var status = mapStatus(c.review >= 0 ? r[c.review] : '');
+    if(!hours && status === 'approved'){
+      PARSED.issues.push('第 ' + (i+1) + ' 列（' + name + '）標為同意但沒有時數，改列為已撤銷');
+      status = 'cancelled';
+    }
+    var type = mapType(r[c.type]) || 'other';
+    PARSED.leave.push({
+      row:i+1, name:name, emailRaw:String(r[c.email] || '').trim().toLowerCase(),
+      type:type, otherType:String(c.other >= 0 ? r[c.other] : '').trim(),
+      startAt:start, endAt:end, hours:hours,
+      annualHours: type === 'annual' ? (num(c.annual >= 0 ? r[c.annual] : 0) || hours) : 0,
+      compHours:   type === 'comp'   ? (num(c.comp   >= 0 ? r[c.comp]   : 0) || hours) : 0,
+      isLate: /是/.test(String(c.late >= 0 ? r[c.late] : '')),
+      lateReason: String(c.lateR >= 0 ? r[c.lateR] : '').trim(),
+      needsProxy: /是/.test(String(c.needP >= 0 ? r[c.needP] : '')),
+      proxyName: String(c.proxy >= 0 ? r[c.proxy] : '').trim(),
+      status:status,
+      createdAt: mkDate(parseDate(c.stamp >= 0 ? r[c.stamp] : ''), parseTime(c.stamp >= 0 ? r[c.stamp] : '')) || start
+    });
+  }
+}
+
+function parseOt(text){
+  var rows = parseCSV(text);
+  if(!rows.length) throw new Error('加班 CSV 是空的');
+  var H = rows[0];
+  var c = {
+    stamp: findCol(H, ['時間戳記']),
+    email: findCol(H, ['電子郵件']),
+    name:  findCol(H, ['姓名']),
+    date:  findCol(H, ['加班日期']),
+    st:    findCol(H, ['加班時間','起']),
+    et:    findCol(H, ['加班時間','迄']),
+    hours: findCol(H, ['加班時數'], ['增額']),
+    bonus: findCol(H, ['增額']),
+    reason:findCol(H, ['事由']),
+    review:findCol(H, ['秘書長審核'])
+  };
+  if(c.date < 0) c.date = findCol(H, ['日期']);
+  if(c.hours < 0) c.hours = findCol(H, ['時數'], ['增額']);
+  if(c.name < 0 || c.date < 0) throw new Error('加班 CSV 找不到「姓名」或「加班日期」欄位');
+
+  for(var i = 1; i < rows.length; i++){
+    var r = rows[i];
+    var name = String(r[c.name] || '').trim();
+    if(!name) continue;
+    var dp = parseDate(r[c.date]);
+    if(!dp){ PARSED.issues.push('加班第 ' + (i+1) + ' 列（' + name + '）沒有日期，已略過'); continue; }
+    var st = mkDate(dp, parseTime(c.st >= 0 ? r[c.st] : '')) || mkDate(dp, {h:9,mi:0});
+    var et = mkDate(dp, parseTime(c.et >= 0 ? r[c.et] : '')) || st;
+    var hours = num(c.hours >= 0 ? r[c.hours] : 0);
+    if(!hours && et > st) hours = Math.round(((et - st) / 36e5) * 2) / 2;
+    var status = mapStatus(c.review >= 0 ? r[c.review] : '');
+    if(!hours && status === 'approved'){
+      PARSED.issues.push('加班第 ' + (i+1) + ' 列（' + name + '）沒有時數，改列為已撤銷');
+      status = 'cancelled';
+    }
+    PARSED.ot.push({
+      row:i+1, name:name, emailRaw:String(r[c.email] || '').trim().toLowerCase(),
+      date:mkDate(dp, {h:0,mi:0}), startAt:st, endAt:et,
+      hours:hours, bonusHours:num(c.bonus >= 0 ? r[c.bonus] : 0),
+      reason:String(c.reason >= 0 ? r[c.reason] : '').trim(),
+      status:status,
+      createdAt: mkDate(parseDate(c.stamp >= 0 ? r[c.stamp] : ''), parseTime(c.stamp >= 0 ? r[c.stamp] : '')) || st
+    });
+  }
+}
+
+/* ---------- 預覽 ---------- */
+var ACCOUNTS = {}, NAME2EMAIL = {};
+function showPreview(){
+  $('#preview').classList.remove('hide');
+  T.adminLogin(T.ADMIN_PASSWORD);
+  return T.listAccounts().then(function(list){
+    ACCOUNTS = {}; NAME2EMAIL = {};
+    list.forEach(function(a){ ACCOUNTS[a.email] = a; if(a.name) NAME2EMAIL[a.name] = a.email; });
+
+    var all = PARSED.leave.concat(PARSED.ot);
+    var byName = {}, unmatched = {};
+    all.forEach(function(x){
+      x.email = ACCOUNTS[x.emailRaw] ? x.emailRaw : (NAME2EMAIL[x.name] || null);
+      if(!x.email){ unmatched[x.name] = (unmatched[x.name] || 0) + 1; return; }
+      var k = x.name;
+      byName[k] = byName[k] || { lv:0, ot:0, approved:0, other:0, min:null, max:null };
+      if(x.startAt !== undefined && x.hours !== undefined && x.type) byName[k].lv++;
+      else byName[k].ot++;
+      if(x.status === 'approved') byName[k].approved++; else byName[k].other++;
+      var d = x.startAt || x.date;
+      if(!byName[k].min || d < byName[k].min) byName[k].min = d;
+      if(!byName[k].max || d > byName[k].max) byName[k].max = d;
+    });
+
+    var rows = Object.keys(byName).sort().map(function(n){
+      var b = byName[n];
+      return '<tr><td>' + n + '</td><td>' + b.lv + '</td><td>' + b.ot + '</td>' +
+        '<td>' + b.approved + '</td>' +
+        '<td>' + (b.min ? T.fmtDate(b.min) : '—') + '</td>' +
+        '<td>' + (b.max ? T.fmtDate(b.max) : '—') + '</td></tr>';
+    }).join('');
+    var totL = PARSED.leave.length, totO = PARSED.ot.length;
+    rows += '<tr class="tot"><td>合計</td><td>' + totL + '</td><td>' + totO + '</td>' +
+      '<td>' + all.filter(function(x){ return x.status === 'approved'; }).length + '</td>' +
+      '<td colspan="2">—</td></tr>';
+
+    $('#stats').innerHTML = '<table><thead><tr><th>姓名</th><th>請假</th><th>加班</th>' +
+      '<th>已核准</th><th>最早</th><th>最晚</th></tr></thead><tbody>' + rows + '</tbody></table>';
+
+    var html = '';
+    var un = Object.keys(unmatched);
+    if(un.length){
+      html += '<div class="bad">這些人在系統名單上找不到，<b>不會被匯入</b>：<br>' +
+        un.map(function(n){ return n + '（' + unmatched[n] + ' 筆）'; }).join('、') +
+        '<br><br>如果是已離職的同仁，需要先到後台把信箱建起來。</div>';
+    }
+    if(PARSED.issues.length){
+      html += '<div class="warn"><b>有 ' + PARSED.issues.length + ' 筆需要注意：</b><br>' +
+        PARSED.issues.slice(0, 12).map(function(s){ return '· ' + s; }).join('<br>') +
+        (PARSED.issues.length > 12 ? '<br>· 還有 ' + (PARSED.issues.length - 12) + ' 筆…' : '') + '</div>';
+    }
+    html += '<div class="info" style="margin-top:12px">匯入的資料會標記為「舊資料」，' +
+      '<b>不會改動任何人的時數餘額</b>（餘額已經是對的）。<br>' +
+      '如果匯錯了，可以按下面的「清除先前匯入的資料」全部收回。</div>';
+    $('#issues').innerHTML = html;
+  });
+}
+
+/* ---------- 匯入 ---------- */
+var BATCH_TAG = 'legacy-import';
+function say(m, cls){ $('#log').innerHTML += '<span class="' + (cls||'') + '">' + m + '</span>\n';
+  $('#log').scrollTop = 1e6; }
+
+$('#run').onclick = function(){
+  var todo = PARSED.leave.concat(PARSED.ot).filter(function(x){ return x.email; });
+  if(!todo.length) return alert('沒有可以匯入的資料');
+  if(!confirm('確定匯入 ' + todo.length + ' 筆紀錄？\n\n不會改動時數餘額。')) return;
+
+  var b = $('#run'); b.disabled = true; b.textContent = '匯入中…';
+  $('#barWrap').classList.remove('hide');
+  $('#log').innerHTML = '';
+  T.adminLogin(T.ADMIN_PASSWORD);
+
+  var done = 0, fail = 0;
+  var chain = Promise.resolve();
+  todo.forEach(function(x){
+    chain = chain.then(function(){
+      var acc = ACCOUNTS[x.email] || {};
+      var isLeave = !!x.type;
+      var base = {
+        email: x.email, name: x.name, term: acc.term || 1,
+        source: BATCH_TAG,
+        status: x.status,
+        reviewedBy: x.status === 'approved' || x.status === 'rejected' ? '秘書長' : null,
+        reviewedAt: x.status === 'approved' || x.status === 'rejected'
+          ? T.Timestamp.fromDate(x.createdAt) : null,
+        adminNote: '由舊表單匯入',
+        createdAt: T.Timestamp.fromDate(x.createdAt),
+        updatedAt: T.serverTimestamp()
+      };
+      var doc;
+      if(isLeave){
+        doc = Object.assign(base, {
+          type: x.type, otherType: x.otherType,
+          startAt: T.Timestamp.fromDate(x.startAt),
+          endAt:   T.Timestamp.fromDate(x.endAt),
+          hours: x.hours, annualHours: x.annualHours, compHours: x.compHours,
+          segments: T.splitByMonth(x.startAt, x.endAt, x.hours),
+          isLate: x.isLate, lateReason: x.lateReason,
+          needsProxy: x.needsProxy, proxyName: x.proxyName
+        });
+        return T.db.collection(T.COL.leave).add(doc);
+      }
+      doc = Object.assign(base, {
+        date:    T.Timestamp.fromDate(x.date),
+        startAt: T.Timestamp.fromDate(x.startAt),
+        endAt:   T.Timestamp.fromDate(x.endAt),
+        hours: x.hours, bonusHours: x.bonusHours,
+        isDispatch: x.bonusHours > 0,
+        ym: T.ym(x.date), dateKey: T.dateKey(x.date),
+        isWeekend: !T.isWorkingDay(x.date),
+        reason: x.reason, overCapWarning: false
+      });
+      return T.db.collection(T.COL.overtime).add(doc);
+    }).then(function(){
+      done++;
+      if(done % 25 === 0) say('已匯入 ' + done + ' / ' + todo.length);
+      $('#bar').style.width = ((done + fail) / todo.length * 100) + '%';
+    }).catch(function(e){
+      fail++;
+      say('✘ 第 ' + x.row + ' 列失敗：' + (e.message || e), 'r');
+    });
+  });
+
+  chain.then(function(){
+    say('');
+    say('完成：成功 ' + done + ' 筆' + (fail ? '，失敗 ' + fail + ' 筆' : ''), fail ? 'y' : 'g');
+    say('可以到後台「完整紀錄」確認。');
+    b.textContent = '已完成';
+  });
+};
+
+/* ---------- 收回 ---------- */
+$('#undo').onclick = function(){
+  if(!confirm('把先前匯入的舊資料全部刪掉？\n\n只會刪除標記為「舊資料」的紀錄，\n系統上線後新建的不受影響。')) return;
+  var b = $('#undo'); b.disabled = true; b.textContent = '清除中…';
+  T.adminLogin(T.ADMIN_PASSWORD);
+  $('#log').innerHTML = '';
+  var n = 0;
+  Promise.all([
+    T.db.collection(T.COL.leave).where('source','==',BATCH_TAG).get(),
+    T.db.collection(T.COL.overtime).where('source','==',BATCH_TAG).get()
+  ]).then(function(r){
+    var dels = [];
+    r[0].forEach(function(d){ dels.push(T.db.collection(T.COL.leave).doc(d.id).delete()); n++; });
+    r[1].forEach(function(d){ dels.push(T.db.collection(T.COL.overtime).doc(d.id).delete()); n++; });
+    return Promise.all(dels);
+  }).then(function(){
+    say('已清除 ' + n + ' 筆舊資料', 'g');
+    b.disabled = false; b.textContent = '清除先前匯入的資料';
+  }).catch(function(e){
+    say('清除失敗：' + (e.message || e), 'r');
+    b.disabled = false; b.textContent = '清除先前匯入的資料';
+  });
+};
+</script>
+</body>
+</html>
