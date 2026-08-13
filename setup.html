@@ -66,15 +66,15 @@ var T = window.TPS;
    遞延特休 = 2025未結 − 2026已使用（遞延優先扣） */
 var SEED = [
   { email:'office@ps-taiwan.org',    name:'楊雅婷', hire:'2024-03-01',
-    carry:19.5, current:70,   comp:119,   usedA:29.5, usedC:206 },
+    carry:19.5, current:70,   comp:119,   usedA:29.5, usedC:206, lastGrant:'2026-03-01' },
   { email:'conf@ps-taiwan.org',      name:'簡鑫如', hire:'2024-03-01',
-    carry:3,    current:70,   comp:151.5, usedA:44,   usedC:112 },
+    carry:3,    current:70,   comp:151.5, usedA:44,   usedC:112, lastGrant:'2026-03-01' },
   { email:'cjp@ps-taiwan.org',       name:'楊綺萍', hire:'2023-12-01',
-    carry:63,   current:0,    comp:25.5,  usedA:7,    usedC:107 },
+    carry:63,   current:0,    comp:25.5,  usedA:7,    usedC:107, lastGrant:'2025-12-01' },
   { email:'bimonthly@ps-taiwan.org', name:'張文樺', hire:'2026-06-01',
-    carry:0,    current:0,    comp:6.5,   usedA:0,    usedC:41 },
+    carry:0,    current:0,    comp:6.5,   usedA:0,    usedC:41,  lastGrant:null },
   { email:'chenfdhs453@gmail.com',   name:'陳睿騏', hire:'2025-01-01',
-    carry:20,   current:21,   comp:0,     usedA:0,    usedC:0 }
+    carry:20,   current:21,   comp:0,     usedA:0,    usedC:0,   lastGrant:'2026-01-01' }
 ];
 var EXPIRE = '2026-12-31';
 
@@ -101,6 +101,7 @@ document.getElementById('go').onclick = function(){
         name: s.name, term: 1, active: true,
         hireDate: T.Timestamp.fromDate(new Date(s.hire + 'T00:00:00')),
         resignDate: null, pwHash: T._hashPw(T.DEFAULT_PW),
+        lastGrantAnniv: s.lastGrant || null,
         createdAt: T.serverTimestamp()
       }).then(function(){
         return T.setMerge(T.COL.balances, s.email, {
@@ -108,9 +109,12 @@ document.getElementById('go').onclick = function(){
           annualCarryExpire: s.carry > 0 ? expire : null,
           annualCurrent: s.current,
           annualRemaining: T.roundHalf(s.carry + s.current),
+          compCarry: 0, compCarryExpire: null,
+          compCurrent: s.comp,
           compRemaining: s.comp,
           annualUsedYTD: s.usedA, compUsedYTD: s.usedC, compEarnedYTD: 0,
-          expiredCarryHours: 0, updatedAt: T.serverTimestamp()
+          expiredAnnualHours: 0, expiredCompHours: 0,
+          updatedAt: T.serverTimestamp()
         });
       }).then(function(){
         say('✔ ' + s.name + '　' + s.email + '　特休 ' +
