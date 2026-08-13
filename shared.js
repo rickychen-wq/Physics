@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '5.2.0';
+var SHARED_VERSION = '5.3.0';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -1025,6 +1025,121 @@ function deleteRecord(kind, id) {
   }).then(function () { return ref.delete(); });
 }
 
+/**
+ * 修改一筆紀錄。時數或狀態變動時會自動把餘額調整到正確值。
+ * 做法：先把舊的影響整個還原，再照新的重新扣一次，這樣不會算錯。
+ */
+function editRecord(kind, id, patch) {
+  if (!isAdmin()) return Promise.reject(new Error('只有秘書長可以修改紀錄'));
+  var col = kind === 'overtime' ? COL.overtime : COL.leave;
+  var ref = db.collection(col).doc(id);
+
+  return ref.get().then(function (sn) {
+    if (!sn.exists) throw new Error('這筆紀錄不存在');
+    var O = sn.data();                       // 舊的
+    var N = Object.assign({}, O, patch);     // 新的
+
+    /* 重新計算衍生欄位 */
+    if (kind === 'leave') {
+      var st = toDate(N.startAt), en = toDate(N.endAt);
+      if (!(en > st)) throw new Error('結束時間必須晚於開始時間');
+      N.hours = roundHalf(N.hours);
+      if (!(N.hours > 0)) throw new Error('時數必須大於 0');
+      var def = leaveTypeDef(N.type);
+      if (!def) throw new Error('假別不存在');
+      N.annualHours = def.deducts === 'annual' ? N.hours : 0;
+      N.compHours   = def.deducts === 'comp'   ? N.hours : 0;
+      N.segments = splitByMonth(st, en, N.hours);
+      N.startAt = TS.fromDate(st);
+      N.endAt   = TS.fromDate(en);
+    } else {
+      N.hours = roundHalf(N.hours);
+      if (!(N.hours > 0)) throw new Error('時數必須大於 0');
+      var d = toDate(N.date);
+      N.date = TS.fromDate(d);
+      N.ym = ym(d);
+      N.dateKey = dateKey(d);
+      N.isWeekend = !isWorkingDay(d);
+      N.bonusHours = N.isDispatch
+        ? roundHalf(N.hours * (OT_RULES.dispatchMultiplier - 1))
+        : 0;
+    }
+    N.updatedAt = serverTimestamp();
+    N.editedBy = currentUser().name;
+    N.editedAt = serverTimestamp();
+
+    return getBalance(O.email).then(function (B) {
+      var b = normalizeBal(B);
+
+      /* ① 先還原舊紀錄的影響 */
+      if (O.status === STATUS.APPROVED) {
+        if (kind === 'overtime') {
+          var oldGain = roundHalf((O.hours || 0) + (O.bonusHours || 0));
+          b.compCurrent = roundHalf(b.compCurrent - oldGain);
+          b.compEarnedYTD = roundHalf((b.compEarnedYTD || 0) - oldGain);
+        } else {
+          b.annualCarry   = roundHalf(b.annualCarry   + (O.annualFromCarry   || 0));
+          b.annualCurrent = roundHalf(b.annualCurrent +
+            (O.annualFromCurrent !== undefined ? O.annualFromCurrent : (O.annualHours || 0)));
+          b.compCarry     = roundHalf(b.compCarry     + (O.compFromCarry     || 0));
+          b.compCurrent   = roundHalf(b.compCurrent   +
+            (O.compFromCurrent   !== undefined ? O.compFromCurrent   : (O.compHours   || 0)));
+          b.annualUsedYTD = roundHalf((b.annualUsedYTD || 0) - (O.annualHours || 0));
+          b.compUsedYTD   = roundHalf((b.compUsedYTD   || 0) - (O.compHours   || 0));
+        }
+      }
+
+      /* ② 再套用新紀錄的影響 */
+      if (N.status === STATUS.APPROVED) {
+        if (kind === 'overtime') {
+          var gain = roundHalf(N.hours + (N.bonusHours || 0));
+          b.compCurrent = roundHalf(b.compCurrent + gain);
+          b.compEarnedYTD = roundHalf((b.compEarnedYTD || 0) + gain);
+        } else {
+          var sa = splitPool(b, N.annualHours || 0, 'annual');
+          var sc = splitPool(b, N.compHours   || 0, 'comp');
+          if ((N.annualHours || 0) > 0 && !sa.enough)
+            throw new Error('特休不足：改成這樣會超支，目前可用 ' +
+              roundHalf(b.annualCarry + b.annualCurrent) + ' 小時');
+          if ((N.compHours || 0) > 0 && !sc.enough)
+            throw new Error('補休不足：改成這樣會超支，目前可用 ' +
+              roundHalf(b.compCarry + b.compCurrent) + ' 小時');
+          N.annualFromCarry   = sa.fromCarry;
+          N.annualFromCurrent = sa.fromCurrent;
+          N.compFromCarry     = sc.fromCarry;
+          N.compFromCurrent   = sc.fromCurrent;
+          b.annualCarry   = roundHalf(b.annualCarry   - sa.fromCarry);
+          b.annualCurrent = roundHalf(b.annualCurrent - sa.fromCurrent);
+          b.compCarry     = roundHalf(b.compCarry     - sc.fromCarry);
+          b.compCurrent   = roundHalf(b.compCurrent   - sc.fromCurrent);
+          b.annualUsedYTD = roundHalf((b.annualUsedYTD || 0) + (N.annualHours || 0));
+          b.compUsedYTD   = roundHalf((b.compUsedYTD   || 0) + (N.compHours   || 0));
+        }
+      } else {
+        N.annualFromCarry = 0; N.annualFromCurrent = 0;
+        N.compFromCarry = 0;   N.compFromCurrent = 0;
+      }
+
+      /* 餘額不該變成負的 */
+      ['annualCarry','annualCurrent','compCarry','compCurrent',
+       'annualUsedYTD','compUsedYTD','compEarnedYTD'].forEach(function (k) {
+        if (b[k] < 0) b[k] = 0;
+      });
+
+      return setMerge(COL.balances, O.email, {
+        annualCarry: b.annualCarry, annualCurrent: b.annualCurrent,
+        annualRemaining: roundHalf(b.annualCarry + b.annualCurrent),
+        compCarry: b.compCarry, compCurrent: b.compCurrent,
+        compRemaining: roundHalf(b.compCarry + b.compCurrent),
+        annualUsedYTD: b.annualUsedYTD, compUsedYTD: b.compUsedYTD,
+        compEarnedYTD: b.compEarnedYTD, updatedAt: serverTimestamp()
+      }).then(function () { return ref.set(N); });
+    }).then(function () {
+      return writeAudit('record.edit', id, O, patch);
+    });
+  });
+}
+
 /* ---------- 10. 本月時數 ---------- */
 function monthLeaveHours(leaves, month) {
   var sum = 0;
@@ -1134,7 +1249,8 @@ return {
   submitOvertime: submitOvertime, reviewOvertime: reviewOvertime,
   watchMyLeaves: watchMyLeaves, watchMyOvertime: watchMyOvertime,
   watchPendingLeaves: watchPendingLeaves, watchPendingOvertime: watchPendingOvertime,
-  fetchAllRecords: fetchAllRecords, fetchAudit: fetchAudit, deleteRecord: deleteRecord,
+  fetchAllRecords: fetchAllRecords, fetchAudit: fetchAudit,
+  deleteRecord: deleteRecord, editRecord: editRecord,
   monthLeaveHours: monthLeaveHours, monthOvertimeHours: monthOvertimeHours,
   writeAudit: writeAudit, setErrorHandler: setErrorHandler,
   _sha256: sha256, _hashPw: hashPw,
