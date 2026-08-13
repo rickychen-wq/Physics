@@ -153,6 +153,8 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 .bonus{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:12.5px;
   color:var(--dim);flex-wrap:wrap}
 .bonus input{width:100px;flex:none;text-align:center;padding:10px}
+.sw2{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;color:var(--txt)}
+.sw2 input{width:19px;height:19px;accent-color:var(--gold);flex:none;padding:0}
 .badge{display:inline-block;margin-left:7px;background:var(--warn);color:#1C1305;
   border-radius:10px;padding:0 8px;font-size:11px;font-weight:700;font-family:var(--mono)}
 
@@ -180,6 +182,30 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
   background:rgba(255,255,255,.03);border-radius:10px;padding:11px 13px}
 .law b{color:var(--gold-b);font-family:var(--mono)}
 .abtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+
+/* ===== 行事曆 ===== */
+.cal{padding:13px 17px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;
+  align-items:center;gap:11px}
+.cal:last-child{border-bottom:none}
+.cal .d{font-family:var(--mono);font-size:14px;font-weight:600;flex:none}
+.cal .tp{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700;flex:none}
+.tp.holiday{background:rgba(224,96,90,.15);color:var(--bad)}
+.tp.workday{background:rgba(79,190,129,.15);color:var(--ok)}
+.cal .lb2{font-size:13px;color:var(--dim);flex:1}
+.cal .rm{background:none;border:none;color:var(--dim2);cursor:pointer;font-size:19px;
+  padding:4px 8px;flex:none;width:auto}
+
+/* ===== 結算 ===== */
+.stl{padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.05)}
+.stl:last-child{border-bottom:none}
+.stl .h{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:5px}
+.stl .h b{font-size:15px}
+.stl .hr{margin-left:auto;font-family:var(--mono);font-weight:700;color:var(--warn);font-size:16px}
+.stl .r{font-size:12.5px;color:var(--dim);line-height:1.6}
+.paid{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700;
+  background:rgba(79,190,129,.15);color:var(--ok)}
+.unpaid{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700;
+  background:rgba(229,168,63,.16);color:var(--warn)}
 
 /* ===== 紀錄 ===== */
 .filters{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:15px 16px;
@@ -219,6 +245,8 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
   <button class="ditem" data-p="Rev" aria-selected="true"><span>📥</span>審核</button>
   <button class="ditem" data-p="Acc" aria-selected="false"><span>👤</span>帳號與時數</button>
   <button class="ditem" data-p="Log" aria-selected="false"><span>🗂️</span>完整紀錄</button>
+  <button class="ditem" data-p="Cal" aria-selected="false"><span>📅</span>行事曆</button>
+  <button class="ditem" data-p="Set" aria-selected="false"><span>💰</span>到期結算</button>
   <div class="dsep"></div>
   <button class="ditem" id="dOut"><span>🚪</span>登出</button>
 </aside>
@@ -266,6 +294,39 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
       <div id="logList"><div class="empty">載入中…</div></div>
     </section>
   </div>
+  <!-- 行事曆 -->
+  <div id="pCal" class="hide">
+    <section class="card">
+      <div class="chd"><h2>新增</h2><span class="unit">國定假日 / 補班日</span></div>
+      <div class="cbd">
+        <div class="info">國定假日 = 那天不算時數。<br>
+          補班日 = 那天要上班，就算是星期六也算時數。<br>
+          依行政院人事行政總處公告輸入。</div>
+        <div class="field"><label class="lb">日期</label><input type="date" id="calDate"></div>
+        <div class="field"><label class="lb">類型</label><select id="calType">
+          <option value="holiday">國定假日（放假）</option>
+          <option value="workday">補班日（上班）</option></select></div>
+        <div class="field"><label class="lb">說明</label>
+          <input type="text" id="calLabel" placeholder="例如 春節、國慶日、補班"></div>
+        <button class="btn" id="calAdd">新增</button>
+      </div>
+    </section>
+    <section class="card">
+      <div class="chd"><h2>已設定</h2>
+        <select id="calYear" style="width:auto;padding:6px 30px 6px 10px;font-size:13px"></select></div>
+      <div id="calList"><div class="empty">載入中…</div></div>
+    </section>
+  </div>
+
+  <!-- 到期結算 -->
+  <div id="pSet" class="hide">
+    <section class="card">
+      <div class="chd"><h2>到期折算薪資</h2><span class="unit" id="setCnt">—</span></div>
+      <div class="info" style="margin:14px 16px 0">遞延期滿沒休完的時數會列在這裡，依規定要折算薪資發給本人。<br>
+        發放後請按「標記已發」，系統會留下紀錄。</div>
+      <div id="setList"><div class="empty">載入中…</div></div>
+    </section>
+  </div>
 </main>
 </div>
 
@@ -288,7 +349,7 @@ var T = window.TPS, el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.round
 T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'error'); });
 
 var S = { page:'Rev', unsub:[], busy:false, nL:0, nO:0, accounts:[], bals:{} };
-var TITLE = { Rev:'審核', Acc:'帳號與時數', Log:'完整紀錄' };
+var TITLE = { Rev:'審核', Acc:'帳號與時數', Log:'完整紀錄', Cal:'行事曆', Set:'到期結算' };
 function showErr(id,msg){ var b=el('#'+id);
   if(!msg){ b.classList.add('hide'); return; } b.textContent=msg; b.classList.remove('hide'); }
 
@@ -310,7 +371,92 @@ el('#dOut').onclick = function(){
 function boot(){
   S.unsub.push(T.watchPendingLeaves(renderLeaves));
   S.unsub.push(T.watchPendingOvertime(renderOts));
-  loadAccounts();
+  T.loadCalendar()
+   .then(function(){ return T.checkAllExpiry(); })
+   .then(function(list){
+     if(list.length) toast(list.length + ' 人有時數到期，請到「到期結算」確認','info');
+     return T.autoGrantAll();
+   })
+   .then(function(g){
+     if(g.length) toast(g.length + ' 人到職週年，特休已自動發放','success');
+     loadAccounts();
+   })
+   .catch(function(e){ console.warn(e); loadAccounts(); });
+}
+
+/* ---------- 行事曆 ---------- */
+function loadCal(){
+  var sel = el('#calYear');
+  if(!sel.options.length){
+    var y = new Date().getFullYear(), o = '';
+    for(var i = y + 2; i >= y - 1; i--) o += '<option value="'+i+'">'+i+' 年</option>';
+    sel.innerHTML = o; sel.value = y;
+    sel.onchange = loadCal;
+  }
+  T.listCalendar(sel.value).then(function(list){
+    var box = el('#calList');
+    if(!list.length){ box.innerHTML = '<div class="empty">' + sel.value + ' 年還沒有設定。</div>'; return; }
+    box.innerHTML = '';
+    list.forEach(function(c){
+      var d = document.createElement('div'); d.className = 'cal';
+      d.innerHTML = '<span class="d">' + c.date.slice(5) + '</span>' +
+        '<span class="tp ' + c.type + '">' + (c.type==='holiday'?'放假':'上班') + '</span>' +
+        '<span class="lb2">' + esc(c.label || '') + '</span>';
+      var rm = document.createElement('button');
+      rm.className = 'rm'; rm.textContent = '✕';
+      rm.onclick = function(){
+        if(!confirm('刪除 ' + c.date + ' 的設定？')) return;
+        T.deleteCalendarDay(c.date).then(function(){ toast('已刪除','success'); loadCal(); })
+         .catch(function(e){ toast(e.message,'error'); });
+      };
+      d.appendChild(rm);
+      box.appendChild(d);
+    });
+  }).catch(function(e){ toast(e.message,'error'); });
+}
+el('#calAdd').onclick = function(){
+  var d = el('#calDate').value, t = el('#calType').value, l = el('#calLabel').value.trim();
+  if(!d) return toast('請選日期','error');
+  T.setCalendarDay(d, t, l).then(function(){
+    toast('已新增','success');
+    el('#calDate').value = ''; el('#calLabel').value = '';
+    var y = el('#calYear'); if(y.value !== d.slice(0,4) && y.querySelector('option[value="'+d.slice(0,4)+'"]')) y.value = d.slice(0,4);
+    loadCal();
+  }).catch(function(e){ toast(e.message,'error'); });
+};
+
+/* ---------- 到期結算 ---------- */
+function loadSettle(){
+  T.listSettlements().then(function(list){
+    el('#setCnt').textContent = list.length + ' 筆';
+    var box = el('#setList');
+    if(!list.length){ box.innerHTML = '<div class="empty">目前沒有到期需要折算的時數。</div>'; return; }
+    var nameOf = {};
+    S.accounts.forEach(function(a){ nameOf[a.email] = a.name; });
+    box.innerHTML = '';
+    list.forEach(function(x){
+      var d = document.createElement('div'); d.className = 'stl';
+      d.innerHTML = '<div class="h"><b>' + esc(nameOf[x.email] || x.email) + '</b>' +
+        '<span class="' + (x.paid ? 'paid' : 'unpaid') + '">' +
+          (x.paid ? '已發放' : '待發放') + '</span>' +
+        '<span class="hr">' + x.hours + ' 小時</span></div>' +
+        '<div class="r">' + (x.kind === 'annual' ? '特別休假' : '加班補休') +
+          '　' + x.year + ' 年度</div>' +
+        '<div class="r">' + esc(x.reason || '') + '</div>' +
+        '<div class="r">產生時間 ' + T.fmtStamp(x.createdAt) + '</div>';
+      var b = document.createElement('button');
+      b.className = 'btn ' + (x.paid ? 'ghost' : 'ok') + ' sm';
+      b.style.marginTop = '11px'; b.style.width = '100%';
+      b.textContent = x.paid ? '取消已發放標記' : '標記已發放';
+      b.onclick = function(){
+        T.markSettlementPaid(x.id, !x.paid)
+         .then(function(){ toast('已更新','success'); loadSettle(); })
+         .catch(function(e){ toast(e.message,'error'); });
+      };
+      d.appendChild(b);
+      box.appendChild(d);
+    });
+  }).catch(function(e){ toast(e.message,'error'); });
 }
 
 /* ---------- 抽屜 ---------- */
@@ -323,11 +469,13 @@ Array.prototype.forEach.call(document.querySelectorAll('.ditem[data-p]'), functi
     S.page = b.dataset.p;
     Array.prototype.forEach.call(document.querySelectorAll('.ditem[data-p]'), function(x){
       x.setAttribute('aria-selected', x === b); });
-    ['Rev','Acc','Log'].forEach(function(p){ el('#p'+p).classList.toggle('hide', p !== S.page); });
+    ['Rev','Acc','Log','Cal','Set'].forEach(function(p){ el('#p'+p).classList.toggle('hide', p !== S.page); });
     el('#pageTitle').textContent = TITLE[S.page];
     closeDrawer(); window.scrollTo(0,0);
     if(S.page === 'Acc') loadAccounts();
     if(S.page === 'Log') loadLog();
+    if(S.page === 'Cal') loadCal();
+    if(S.page === 'Set') loadSettle();
   };
 });
 
@@ -402,19 +550,23 @@ function renderOts(list){
       '<div class="im">' + T.fmtDate(o.date) + '　' + T.fmtTime(o.startAt) + ' – ' + T.fmtTime(o.endAt) + '</div>' +
       '<div class="im">送出 ' + T.fmtStamp(o.createdAt) + '</div>' +
       (o.reason ? '<div class="inn">事由：' + esc(o.reason) + '</div>' : '') +
-      '<div class="bonus"><span>核派加班增額</span>' +
-      '<input type="number" step="0.5" min="0" id="bn_' + o.id + '" value="' + (o.bonusHours||0) + '">' +
-      '<span>小時</span></div>';
+      '<div class="bonus"><label class="sw2"><input type="checkbox" id="dp_' + o.id + '"' +
+        (o.isWeekend ? ' checked' : '') + '>這是核派加班（補休加倍）</label></div>' +
+      '<div class="im" id="dpv_' + o.id + '"></div>';
     d.appendChild(actions(
       function(n){
-        var b = parseFloat(el('#bn_' + o.id).value) || 0;
-        var pre = (b !== (o.bonusHours || 0))
-          ? T.setMerge(T.COL.overtime, o.id, { bonusHours: roundHalf(b) })
-          : Promise.resolve();
-        return pre.then(function(){ return T.reviewOvertime(o.id, T.STATUS.APPROVED, n); });
+        return T.reviewOvertime(o.id, T.STATUS.APPROVED, n,
+          { isDispatch: el('#dp_' + o.id).checked });
       },
       function(n){ return T.reviewOvertime(o.id, T.STATUS.REJECTED, n); }));
     box.appendChild(d);
+    var cb = el('#dp_' + o.id), pv = el('#dpv_' + o.id);
+    function upd(){
+      pv.textContent = cb.checked
+        ? '核准後補休 +' + roundHalf(o.hours * 2) + ' 小時（' + o.hours + ' × 2）'
+        : '核准後補休 +' + o.hours + ' 小時';
+    }
+    cb.onchange = upd; upd();
   });
 }
 
@@ -455,12 +607,12 @@ function renderAccounts(){
           (a.active === false ? '已停用' : '在職') + '</span>' +
         '<span class="em">' + esc(a.email) + '</span></div>' +
       '<div class="grid4">' +
-        boxHtml(a.email, 'annualCarry',   '去年遞延（先扣）', b.annualCarry   || 0, true) +
-        boxHtml(a.email, 'annualCurrent', '今年特休',         b.annualCurrent || 0, true) +
-        boxHtml(a.email, 'compRemaining', '加班補休',         b.compRemaining || 0, true) +
-        boxHtml(a.email, '_total',        '特休合計',         b.annualRemaining || 0, false) +
-        boxHtml(a.email, '_moL',          '本月已請假',       moL, false) +
-        boxHtml(a.email, '_moO',          '本月已加班',       moO, false) +
+        boxHtml(a.email, 'annualCarry',   '特休 · 去年遞延', b.annualCarry   || 0, true) +
+        boxHtml(a.email, 'annualCurrent', '特休 · 今年',     b.annualCurrent || 0, true) +
+        boxHtml(a.email, 'compCarry',     '補休 · 去年遞延', b.compCarry     || 0, true) +
+        boxHtml(a.email, 'compCurrent',   '補休 · 今年',     b.compCurrent   || 0, true) +
+        boxHtml(a.email, '_moL',          '本月已請假',      moL, false) +
+        boxHtml(a.email, '_moO',          '本月已加班',      moO, false) +
       '</div>' + lawHtml(a);
     var btns = document.createElement('div'); btns.className = 'abtns';
     btns.appendChild(mkBtn('改姓名', 'ghost', function(){ doRename(a); }));
@@ -524,12 +676,18 @@ function bindBoxes(){
 function setField(email, key, val){
   var b = S.bals[email] || {};
   var patch = {}; patch[key] = val; patch.updatedAt = T.serverTimestamp();
+  var yearEnd = T.Timestamp.fromDate(new Date(new Date().getFullYear() + '-12-31T23:59:59'));
   if(key === 'annualCarry' || key === 'annualCurrent'){
-    var carry = key === 'annualCarry'   ? val : (b.annualCarry   || 0);
-    var cur   = key === 'annualCurrent' ? val : (b.annualCurrent || 0);
-    patch.annualRemaining = roundHalf(carry + cur);
-    if(key === 'annualCarry' && val > 0 && !b.annualCarryExpire)
-      patch.annualCarryExpire = T.Timestamp.fromDate(new Date(new Date().getFullYear() + '-12-31T23:59:59'));
+    var ac = key === 'annualCarry'   ? val : (b.annualCarry   || 0);
+    var au = key === 'annualCurrent' ? val : (b.annualCurrent || 0);
+    patch.annualRemaining = roundHalf(ac + au);
+    if(key === 'annualCarry' && val > 0 && !b.annualCarryExpire) patch.annualCarryExpire = yearEnd;
+  }
+  if(key === 'compCarry' || key === 'compCurrent'){
+    var cc = key === 'compCarry'   ? val : (b.compCarry   || 0);
+    var cu = key === 'compCurrent' ? val : (b.compCurrent || 0);
+    patch.compRemaining = roundHalf(cc + cu);
+    if(key === 'compCarry' && val > 0 && !b.compCarryExpire) patch.compCarryExpire = yearEnd;
   }
   T.setMerge(T.COL.balances, email, patch)
    .then(function(){ return T.writeAudit('balance.edit', email,
