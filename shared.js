@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '5.1.0';
+var SHARED_VERSION = '5.2.0';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -319,7 +319,8 @@ function login(email, password) {
     if (acc.pwHash !== hashPw(password)) throw new Error('密碼不正確');
     _me = buildMe(em, acc);
     saveSession(em);
-    return afterLogin(em);
+    afterLogin(em);          // 不等它跑完，畫面先進去，資料變動會靠監聽自己更新
+    return _me;
   });
 }
 /** 登入後例行檢查：行事曆、遞延到期、到職週年自動發特休 */
@@ -328,7 +329,11 @@ function afterLogin(em) {
     .then(function () { return checkCarryExpiry(em); })
     .then(function () { return autoGrantIfDue(em); })
     .then(function () { return db.collection(COL.accounts).doc(em).get(); })
-    .then(function (sn) { if (sn.exists) _me = buildMe(em, sn.data()); return _me; })
+    .then(function (sn) {
+      // 背景跑完才回來，如果中間已經登出或換成別的身分就不要蓋掉
+      if (sn.exists && _me && _me.email === em) _me = buildMe(em, sn.data());
+      return _me;
+    })
     .catch(function (e) { console.warn('[TPS] 例行檢查', e); return _me; });
 }
 
@@ -340,7 +345,8 @@ function restoreSession() {
   return db.collection(COL.accounts).doc(em).get().then(function (snap) {
     if (!snap.exists || snap.data().active === false) { clearSession(); return null; }
     _me = buildMe(em, snap.data());
-    return afterLogin(em);
+    afterLogin(em);
+    return _me;
   }).catch(function (e) { _onError(e); return null; });
 }
 
@@ -980,6 +986,45 @@ function fetchAllRecords(filter) {
   });
 }
 
+/** 後台刪除單筆紀錄。已核准的會先把時數還回去，不然帳會對不起來。 */
+function deleteRecord(kind, id) {
+  if (!isAdmin()) return Promise.reject(new Error('只有秘書長可以刪除紀錄'));
+  var col = kind === 'overtime' ? COL.overtime : COL.leave;
+  var ref = db.collection(col).doc(id);
+  return ref.get().then(function (sn) {
+    if (!sn.exists) throw new Error('這筆紀錄不存在');
+    var R = sn.data();
+    if (R.status !== STATUS.APPROVED) return null;   // 沒核准過就沒動到時數
+    return getBalance(R.email).then(function (B) {
+      if (kind === 'overtime') {
+        var gain = roundHalf(R.hours + (R.bonusHours || 0));
+        var nCU = roundHalf(Math.max(0, (B.compCurrent || 0) - gain));
+        return setMerge(COL.balances, R.email, {
+          compCurrent: nCU,
+          compRemaining: roundHalf((B.compCarry || 0) + nCU),
+          compEarnedYTD: roundHalf(Math.max(0, (B.compEarnedYTD || 0) - gain)),
+          updatedAt: serverTimestamp()
+        });
+      }
+      var aC = (R.annualFromCarry   !== undefined) ? R.annualFromCarry   : 0;
+      var aU = (R.annualFromCurrent !== undefined) ? R.annualFromCurrent : (R.annualHours || 0);
+      var cC = (R.compFromCarry     !== undefined) ? R.compFromCarry     : 0;
+      var cU = (R.compFromCurrent   !== undefined) ? R.compFromCurrent   : (R.compHours || 0);
+      var rAC = roundHalf(B.annualCarry + aC), rAU = roundHalf(B.annualCurrent + aU);
+      var rCC = roundHalf(B.compCarry   + cC), rCU = roundHalf(B.compCurrent   + cU);
+      return setMerge(COL.balances, R.email, {
+        annualCarry: rAC, annualCurrent: rAU, annualRemaining: roundHalf(rAC + rAU),
+        compCarry: rCC,   compCurrent: rCU,   compRemaining:   roundHalf(rCC + rCU),
+        annualUsedYTD: roundHalf(Math.max(0, (B.annualUsedYTD || 0) - (R.annualHours || 0))),
+        compUsedYTD:   roundHalf(Math.max(0, (B.compUsedYTD   || 0) - (R.compHours   || 0))),
+        updatedAt: serverTimestamp()
+      });
+    }).then(function () { return R; });
+  }).then(function (R) {
+    return writeAudit('record.delete', id, R || null, { kind: kind });
+  }).then(function () { return ref.delete(); });
+}
+
 /* ---------- 10. 本月時數 ---------- */
 function monthLeaveHours(leaves, month) {
   var sum = 0;
@@ -1089,7 +1134,7 @@ return {
   submitOvertime: submitOvertime, reviewOvertime: reviewOvertime,
   watchMyLeaves: watchMyLeaves, watchMyOvertime: watchMyOvertime,
   watchPendingLeaves: watchPendingLeaves, watchPendingOvertime: watchPendingOvertime,
-  fetchAllRecords: fetchAllRecords, fetchAudit: fetchAudit,
+  fetchAllRecords: fetchAllRecords, fetchAudit: fetchAudit, deleteRecord: deleteRecord,
   monthLeaveHours: monthLeaveHours, monthOvertimeHours: monthOvertimeHours,
   writeAudit: writeAudit, setErrorHandler: setErrorHandler,
   _sha256: sha256, _hashPw: hashPw,
