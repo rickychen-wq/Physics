@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '5.0.0';
+var SHARED_VERSION = '5.1.0';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -94,8 +94,18 @@ var STATUS = { PENDING:'pending', APPROVED:'approved', REJECTED:'rejected', CANC
 var STATUS_LABEL = { pending:'待審核', approved:'同意', rejected:'不同意', cancelled:'已撤銷' };
 var COL = {
   accounts:'accounts', balances:'balances',
-  leave:'leaveRequests', overtime:'overtimeRequests', audit:'auditLog'
+  leave:'leaveRequests', overtime:'overtimeRequests', audit:'auditLog',
+  calendar:'calendar',      // 國定假日與補班日
+  notices:'notices',        // 站內通知
+  settlements:'settlements' // 到期折算薪資的紀錄
 };
+
+/* 加班規則（依秘書長 2026/08 說明）
+   ─ 第一小時必須整數，之後才能以 0.5 為單位
+   ─ 工作日一天最多 4 小時
+   ─ 一個月總時數不得超過 46（以實際時數計，不含核派加倍的部分）
+   ─ 核派加班補休加倍，由秘書長審核時決定 */
+var OT_RULES = { minHours:1, weekdayDailyCap:4, monthlyCap:46, dispatchMultiplier:2 };
 function leaveTypeLabel(id) {
   for (var i = 0; i < LEAVE_TYPES.length; i++)
     if (LEAVE_TYPES[i].id === id) return LEAVE_TYPES[i].label;
@@ -124,8 +134,64 @@ function fmtStamp(d) {
   return x.getFullYear() + '/' + pad(x.getMonth()+1) + '/' + pad(x.getDate()) + ' ' + fmtTime(x);
 }
 function roundHalf(n) { return Math.round(Number(n) * 2) / 2; }
-function isWorkday(d) { var w = d.getDay(); return w >= 1 && w <= 5; }
 function ms(v) { return (v && v.toMillis) ? v.toMillis() : 0; }
+
+/* ---------- 行事曆：國定假日與補班日 ----------
+   dayType(d) 回傳 'holiday'（放假，不算時數）
+                 'workday'（上班，即使是週末也算）
+                 null（照星期判斷）                       */
+var _cal = {};          // { '2026-02-16': 'holiday', ... }
+var _calLoaded = false;
+
+function dateKey(d) {
+  var x = toDate(d);
+  return x.getFullYear() + '-' + pad(x.getMonth()+1) + '-' + pad(x.getDate());
+}
+function loadCalendar() {
+  return db.collection(COL.calendar).get().then(function (snap) {
+    _cal = {};
+    snap.forEach(function (d) { _cal[d.id] = (d.data() || {}).type || 'holiday'; });
+    _calLoaded = true;
+    return _cal;
+  }).catch(function (e) { _onError(e); _calLoaded = true; return _cal; });
+}
+function calendarReady() { return _calLoaded; }
+function dayType(d) { return _cal[dateKey(d)] || null; }
+/** 這天要不要算時數 */
+function isWorkingDay(d) {
+  var t = dayType(d);
+  if (t === 'holiday') return false;   // 國定假日：不算
+  if (t === 'workday') return true;    // 補班日：算，即使是週六
+  var w = d.getDay();
+  return w >= 1 && w <= 5;
+}
+function listCalendar(year) {
+  return db.collection(COL.calendar).get().then(function (snap) {
+    var out = [];
+    snap.forEach(function (d) {
+      var o = d.data(); o.date = d.id;
+      if (!year || d.id.slice(0,4) === String(year)) out.push(o);
+    });
+    return out.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  });
+}
+function setCalendarDay(dateStr, type, label) {
+  if (!isAdmin()) return Promise.reject(new Error('只有秘書長可以修改行事曆'));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr))
+    return Promise.reject(new Error('日期格式要像 2027-02-16'));
+  if (type !== 'holiday' && type !== 'workday')
+    return Promise.reject(new Error('類型只能是 holiday 或 workday'));
+  return db.collection(COL.calendar).doc(dateStr)
+    .set({ type: type, label: label || '', updatedAt: serverTimestamp() })
+    .then(function () { _cal[dateStr] = type; })
+    .then(function () { return writeAudit('calendar.set', dateStr, null, { type:type, label:label }); });
+}
+function deleteCalendarDay(dateStr) {
+  if (!isAdmin()) return Promise.reject(new Error('只有秘書長可以修改行事曆'));
+  return db.collection(COL.calendar).doc(dateStr).delete()
+    .then(function () { delete _cal[dateStr]; })
+    .then(function () { return writeAudit('calendar.delete', dateStr, null, null); });
+}
 
 /** 依上班時段自動算時數：平日 09–12、13–17 */
 function estimateHours(startAt, endAt) {
@@ -135,7 +201,7 @@ function estimateHours(startAt, endAt) {
   var cur  = new Date(s.getFullYear(), s.getMonth(), s.getDate());
   var last = new Date(e.getFullYear(), e.getMonth(), e.getDate());
   while (cur <= last) {
-    if (isWorkday(cur)) {
+    if (isWorkingDay(cur)) {
       for (var i = 0; i < WORK_WINDOWS.length; i++) {
         var ws = new Date(cur); ws.setHours(WORK_WINDOWS[i][0], 0, 0, 0);
         var we = new Date(cur); we.setHours(WORK_WINDOWS[i][1], 0, 0, 0);
@@ -157,7 +223,7 @@ function splitByMonth(startAt, endAt, totalHours) {
   var cur  = new Date(s.getFullYear(), s.getMonth(), s.getDate());
   var last = new Date(e.getFullYear(), e.getMonth(), e.getDate());
   while (cur <= last) {
-    if (isWorkday(cur)) {
+    if (isWorkingDay(cur)) {
       var k = ym(cur);
       if (!per[k]) { per[k] = 0; keys.push(k); }
       per[k]++; workdays++;
@@ -253,9 +319,19 @@ function login(email, password) {
     if (acc.pwHash !== hashPw(password)) throw new Error('密碼不正確');
     _me = buildMe(em, acc);
     saveSession(em);
-    return checkCarryExpiry(em).then(function () { return _me; });
+    return afterLogin(em);
   });
 }
+/** 登入後例行檢查：行事曆、遞延到期、到職週年自動發特休 */
+function afterLogin(em) {
+  return loadCalendar()
+    .then(function () { return checkCarryExpiry(em); })
+    .then(function () { return autoGrantIfDue(em); })
+    .then(function () { return db.collection(COL.accounts).doc(em).get(); })
+    .then(function (sn) { if (sn.exists) _me = buildMe(em, sn.data()); return _me; })
+    .catch(function (e) { console.warn('[TPS] 例行檢查', e); return _me; });
+}
+
 function logout() { _me = null; clearSession(); return Promise.resolve(); }
 
 function restoreSession() {
@@ -264,7 +340,7 @@ function restoreSession() {
   return db.collection(COL.accounts).doc(em).get().then(function (snap) {
     if (!snap.exists || snap.data().active === false) { clearSession(); return null; }
     _me = buildMe(em, snap.data());
-    return checkCarryExpiry(em).then(function () { return _me; });
+    return afterLogin(em);
   }).catch(function (e) { _onError(e); return null; });
 }
 
@@ -350,10 +426,13 @@ function handoverAccount(email, newName, hireDate) {
       prevName: acc.name || '',
       termStartAt: serverTimestamp()
     }).then(function () {
+      // 兩袋都要歸零，漏一個新秘書就會繼承前任的時數
       return setMerge(COL.balances, em, {
         annualCarry: 0, annualCarryExpire: null, annualCurrent: 0, annualRemaining: 0,
-        compRemaining: 0, annualUsedYTD: 0, compUsedYTD: 0, compEarnedYTD: 0,
-        expiredCarryHours: 0, updatedAt: serverTimestamp()
+        compCarry: 0,   compCarryExpire: null,   compCurrent: 0,   compRemaining: 0,
+        annualUsedYTD: 0, compUsedYTD: 0, compEarnedYTD: 0,
+        expiredAnnualHours: 0, expiredCompHours: 0,
+        updatedAt: serverTimestamp()
       });
     }).then(function () {
       return writeAudit('account.handover', em,
@@ -363,23 +442,36 @@ function handoverAccount(email, newName, hireDate) {
 }
 
 /* ---------- 6. 時數 ---------- */
+/* 特休和補休都分兩袋：
+   xxxCarry   = 去年遞延過來的，有到期日，請假優先扣
+   xxxCurrent = 今年新增的
+   到期沒用完 → 強制折算薪資（勞基法 §38、學會補休規定） */
 var EMPTY_BAL = {
   annualCarry:0, annualCarryExpire:null, annualCurrent:0, annualRemaining:0,
-  compRemaining:0, annualUsedYTD:0, compUsedYTD:0, compEarnedYTD:0, expiredCarryHours:0
+  compCarry:0,   compCarryExpire:null,   compCurrent:0,   compRemaining:0,
+  annualUsedYTD:0, compUsedYTD:0, compEarnedYTD:0,
+  expiredAnnualHours:0, expiredCompHours:0
 };
 function normalizeBal(b) {
   var o = Object.assign({}, EMPTY_BAL, b || {});
+  // 舊資料只有 compRemaining 沒有兩袋時，全部當成今年的
+  if (b && b.compCurrent === undefined && b.compRemaining !== undefined)
+    o.compCurrent = roundHalf((b.compRemaining || 0) - (b.compCarry || 0));
   o.annualRemaining = roundHalf((o.annualCarry || 0) + (o.annualCurrent || 0));
+  o.compRemaining   = roundHalf((o.compCarry   || 0) + (o.compCurrent   || 0));
   return o;
 }
 /** 先扣遞延、再扣今年 */
-function splitAnnual(bal, need) {
+function splitPool(bal, need, kind) {
   var b = normalizeBal(bal);
-  var fromCarry   = Math.min(roundHalf(need), b.annualCarry || 0);
+  var carry = kind === 'annual' ? b.annualCarry   : b.compCarry;
+  var cur   = kind === 'annual' ? b.annualCurrent : b.compCurrent;
+  var fromCarry   = Math.min(roundHalf(need), carry || 0);
   var fromCurrent = roundHalf(need - fromCarry);
-  return { fromCarry: fromCarry, fromCurrent: fromCurrent,
-           enough: fromCurrent <= (b.annualCurrent || 0) };
+  return { fromCarry: fromCarry, fromCurrent: fromCurrent, enough: fromCurrent <= (cur || 0) };
 }
+function splitAnnual(bal, need) { return splitPool(bal, need, 'annual'); }
+function splitComp(bal, need)   { return splitPool(bal, need, 'comp'); }
 function getBalance(email) {
   return db.collection(COL.balances).doc(normEmail(email)).get().then(function (s) {
     return normalizeBal(s.exists ? s.data() : null);
@@ -396,23 +488,159 @@ function watchBalance(email, cb) {
  * 2025 沒休完的假遞延到 2026，到 2026/12/31 為止；
  * 2027/1/1 一開頁就會自動歸零，並記下應折發工資的時數。
  */
+/**
+ * 遞延到期檢查（特休與補休各自判斷）。
+ * 到期沒用完的 → 歸零、寫一筆結算紀錄、發通知，不會靜悄悄扣掉。
+ */
 function checkCarryExpiry(email, now) {
   var em = normEmail(email);
   var at = now ? toDate(now) : new Date();
   return getBalance(em).then(function (b) {
-    if (!(b.annualCarry > 0) || !b.annualCarryExpire) return { expired: 0 };
-    var exp = toDate(b.annualCarryExpire);
-    if (isNaN(exp) || at <= exp) return { expired: 0 };
-    var pay = roundHalf(b.annualCarry);
-    return setMerge(COL.balances, em, {
-      annualCarry: 0, annualCarryExpire: null,
-      annualRemaining: roundHalf(b.annualCurrent || 0),
-      expiredCarryHours: roundHalf((b.expiredCarryHours || 0) + pay),
-      updatedAt: serverTimestamp()
+    var patch = {}, settle = [], expiredA = 0, expiredC = 0;
+
+    if ((b.annualCarry > 0) && b.annualCarryExpire) {
+      var ea = toDate(b.annualCarryExpire);
+      if (!isNaN(ea) && at > ea) {
+        expiredA = roundHalf(b.annualCarry);
+        patch.annualCarry = 0; patch.annualCarryExpire = null;
+        patch.annualRemaining = roundHalf(b.annualCurrent || 0);
+        patch.expiredAnnualHours = roundHalf((b.expiredAnnualHours || 0) + expiredA);
+        settle.push({ kind:'annual', hours:expiredA, expiredAt:ea });
+      }
+    }
+    if ((b.compCarry > 0) && b.compCarryExpire) {
+      var ec = toDate(b.compCarryExpire);
+      if (!isNaN(ec) && at > ec) {
+        expiredC = roundHalf(b.compCarry);
+        patch.compCarry = 0; patch.compCarryExpire = null;
+        patch.compRemaining = roundHalf(b.compCurrent || 0);
+        patch.expiredCompHours = roundHalf((b.expiredCompHours || 0) + expiredC);
+        settle.push({ kind:'comp', hours:expiredC, expiredAt:ec });
+      }
+    }
+    if (!settle.length) return { annual:0, comp:0 };
+
+    patch.updatedAt = serverTimestamp();
+    return setMerge(COL.balances, em, patch).then(function () {
+      return Promise.all(settle.map(function (x) {
+        return db.collection(COL.settlements).add({
+          email: em, kind: x.kind, hours: x.hours,
+          year: toDate(x.expiredAt).getFullYear(),
+          expiredAt: TS.fromDate(toDate(x.expiredAt)),
+          reason: '遞延期滿未休完，依規定折算薪資',
+          paid: false, createdAt: serverTimestamp()
+        });
+      }));
     }).then(function () {
-      return writeAudit('balance.carryExpired', em,
-        { annualCarry: pay }, { mustPayHours: pay, expiredAt: fmtDate(exp) });
-    }).then(function () { return { expired: pay }; });
+      var txt = settle.map(function (x) {
+        return (x.kind === 'annual' ? '特休' : '補休') + ' ' + x.hours + ' 小時';
+      }).join('、');
+      return pushNotice(em, '時數到期折算薪資',
+        '你遞延的 ' + txt + ' 已到期，依規定折算為薪資。詳情可詢問秘書長。');
+    }).then(function () { return { annual: expiredA, comp: expiredC }; });
+  });
+}
+
+/** 全部人跑一次到期檢查（後台開啟時執行） */
+function checkAllExpiry(now) {
+  return listAccounts().then(function (list) {
+    return Promise.all(list.map(function (a) { return checkCarryExpiry(a.email, now); }))
+      .then(function (rs) {
+        return list.map(function (a, i) { return { email:a.email, name:a.name, r:rs[i] }; })
+          .filter(function (x) { return x.r.annual > 0 || x.r.comp > 0; });
+      });
+  });
+}
+
+/** 結算紀錄（後台結算分頁用） */
+function listSettlements() {
+  return db.collection(COL.settlements).get().then(function (snap) {
+    var out = [];
+    snap.forEach(function (d) { var o = d.data(); o.id = d.id; out.push(o); });
+    return out.sort(function (a, b) { return ms(b.createdAt) - ms(a.createdAt); });
+  });
+}
+function markSettlementPaid(id, paid) {
+  if (!isAdmin()) return Promise.reject(new Error('只有秘書長可以標記'));
+  return setMerge(COL.settlements, id, { paid: !!paid, paidAt: serverTimestamp() })
+    .then(function () { return writeAudit('settlement.paid', id, null, { paid: !!paid }); });
+}
+
+/**
+ * 自動發特休：任何人開網頁時檢查，過了到職週年就自動發。
+ * 用 lastGrantAnniv 記錄「已經發過哪一個週年」，避免重複發。
+ */
+function autoGrantIfDue(email, now) {
+  var em = normEmail(email);
+  var at = now ? toDate(now) : new Date();
+  return Promise.all([getAccount(em), getBalance(em)]).then(function (r) {
+    var acc = r[0], b = r[1];
+    if (!acc || !acc.hireDate || acc.active === false) return { granted: false };
+
+    var h = toDate(acc.hireDate);
+    var days = annualLeaveDays(h, at);
+    if (days <= 0) return { granted: false };
+
+    // 這次符合的是「第幾個週年」：用年資判斷發放的基準日
+    var anniv = new Date(h);
+    anniv.setMonth(h.getMonth() + 6);          // 滿半年那次
+    var mark = dateKey(anniv);
+    var yrs = at.getFullYear() - h.getFullYear();
+    for (var i = yrs; i >= 1; i--) {
+      var d = new Date(h); d.setFullYear(h.getFullYear() + i);
+      if (d <= at) { mark = dateKey(d); break; }
+    }
+    if (acc.lastGrantAnniv === mark) return { granted: false };
+    if (toDate(mark + 'T00:00:00') > at) return { granted: false };
+
+    var newHours = roundHalf(days * HOURS_PER_DAY);
+    var carry    = roundHalf(b.annualCurrent || 0);
+    var mustPay  = roundHalf(b.annualCarry || 0);   // 上一批遞延還沒用完 → 折算薪資
+    var expire   = new Date(at.getFullYear(), 11, 31, 23, 59, 59);
+
+    var jobs = [];
+    if (mustPay > 0) {
+      jobs.push(db.collection(COL.settlements).add({
+        email: em, kind:'annual', hours: mustPay, year: at.getFullYear(),
+        expiredAt: TS.fromDate(at), paid: false,
+        reason: '新年度發放時，前一批遞延特休尚未休完，依規定折算薪資',
+        createdAt: serverTimestamp()
+      }));
+    }
+    jobs.push(setMerge(COL.balances, em, {
+      annualCarry: carry,
+      annualCarryExpire: carry > 0 ? TS.fromDate(expire) : null,
+      annualCurrent: newHours,
+      annualRemaining: roundHalf(carry + newHours),
+      annualUsedYTD: 0,
+      expiredAnnualHours: roundHalf((b.expiredAnnualHours || 0) + mustPay),
+      updatedAt: serverTimestamp()
+    }));
+    jobs.push(upsertAccount(em, { lastGrantAnniv: mark }));
+
+    return Promise.all(jobs).then(function () {
+      return pushNotice(em, '特休已更新',
+        '你的年資已滿，本年度特休 ' + newHours + ' 小時已發放。' +
+        (carry > 0 ? '去年沒休完的 ' + carry + ' 小時已遞延，' + fmtDate(expire) + ' 前要用完。' : '') +
+        (mustPay > 0 ? '另有 ' + mustPay + ' 小時遞延到期，已折算薪資。' : ''), 'grant');
+    }).then(function () {
+      return writeAudit('balance.autoGrant', em,
+        { current: b.annualCurrent, carry: b.annualCarry },
+        { granted: newHours, carried: carry, mustPayHours: mustPay, anniv: mark });
+    }).then(function () {
+      return { granted: true, hours: newHours, carried: carry, mustPayHours: mustPay, anniv: mark };
+    });
+  }).catch(function (e) { console.warn('[TPS] 自動發特休失敗', e); return { granted: false }; });
+}
+
+/** 全部人跑一次（後台開啟時） */
+function autoGrantAll(now) {
+  return listAccounts().then(function (list) {
+    return Promise.all(list.map(function (a) {
+      return autoGrantIfDue(a.email, now).then(function (r) {
+        r.email = a.email; r.name = a.name; return r;
+      });
+    })).then(function (rs) { return rs.filter(function (x) { return x.granted; }); });
   });
 }
 
@@ -461,7 +689,7 @@ function submitLeave(o) {
     .then(function (bal) {
       if (a > 0 && !splitAnnual(bal, a).enough)
         throw new Error('特休不足，目前剩 ' + (bal.annualRemaining || 0) + ' 小時');
-      if (c > (bal.compRemaining || 0))
+      if (c > 0 && !splitComp(bal, c).enough)
         throw new Error('補休不足，目前剩 ' + (bal.compRemaining || 0) + ' 小時');
       return db.collection(COL.leave).add({
         email: u.email, name: u.name, term: u.term || 1,
@@ -505,19 +733,24 @@ function reviewLeave(leaveId, decision, adminNote) {
       var balRef = db.collection(COL.balances).doc(L.email);
       return tx.get(balRef).then(function (bs) {
         var B = normalizeBal(bs.exists ? bs.data() : null);
-        var sp = splitAnnual(B, L.annualHours || 0);
-        if ((L.annualHours || 0) > 0 && !sp.enough)
+        var sa = splitAnnual(B, L.annualHours || 0);
+        var sc = splitComp(B,  L.compHours   || 0);
+        if ((L.annualHours || 0) > 0 && !sa.enough)
           throw new Error('特休不足：需要 ' + L.annualHours + '，剩 ' + B.annualRemaining);
-        if ((L.compHours || 0) > (B.compRemaining || 0))
+        if ((L.compHours || 0) > 0 && !sc.enough)
           throw new Error('補休不足：需要 ' + L.compHours + '，剩 ' + B.compRemaining);
-        stamp.annualFromCarry   = sp.fromCarry;
-        stamp.annualFromCurrent = sp.fromCurrent;
+        stamp.annualFromCarry   = sa.fromCarry;
+        stamp.annualFromCurrent = sa.fromCurrent;
+        stamp.compFromCarry     = sc.fromCarry;
+        stamp.compFromCurrent   = sc.fromCurrent;
         tx.update(ref, stamp);
-        var nC = roundHalf(B.annualCarry   - sp.fromCarry);
-        var nU = roundHalf(B.annualCurrent - sp.fromCurrent);
+        var nAC = roundHalf(B.annualCarry   - sa.fromCarry);
+        var nAU = roundHalf(B.annualCurrent - sa.fromCurrent);
+        var nCC = roundHalf(B.compCarry     - sc.fromCarry);
+        var nCU = roundHalf(B.compCurrent   - sc.fromCurrent);
         tx.set(balRef, {
-          annualCarry: nC, annualCurrent: nU, annualRemaining: roundHalf(nC + nU),
-          compRemaining: roundHalf((B.compRemaining || 0) - (L.compHours || 0)),
+          annualCarry: nAC, annualCurrent: nAU, annualRemaining: roundHalf(nAC + nAU),
+          compCarry: nCC,   compCurrent: nCU,   compRemaining:   roundHalf(nCC + nCU),
           annualUsedYTD: roundHalf((B.annualUsedYTD || 0) + (L.annualHours || 0)),
           compUsedYTD:   roundHalf((B.compUsedYTD   || 0) + (L.compHours   || 0)),
           updatedAt: serverTimestamp()
@@ -552,13 +785,16 @@ function cancelLeave(leaveId, reason) {
       var balRef = db.collection(COL.balances).doc(L.email);
       return tx.get(balRef).then(function (bs) {
         var B = normalizeBal(bs.exists ? bs.data() : null);
-        var backC = (L.annualFromCarry   !== undefined) ? L.annualFromCarry : 0;
-        var backU = (L.annualFromCurrent !== undefined) ? L.annualFromCurrent : (L.annualHours || 0);
+        var aC = (L.annualFromCarry   !== undefined) ? L.annualFromCarry   : 0;
+        var aU = (L.annualFromCurrent !== undefined) ? L.annualFromCurrent : (L.annualHours || 0);
+        var cC = (L.compFromCarry     !== undefined) ? L.compFromCarry     : 0;
+        var cU = (L.compFromCurrent   !== undefined) ? L.compFromCurrent   : (L.compHours || 0);
         tx.update(ref, stamp);
-        var rC = roundHalf(B.annualCarry + backC), rU = roundHalf(B.annualCurrent + backU);
+        var rAC = roundHalf(B.annualCarry + aC), rAU = roundHalf(B.annualCurrent + aU);
+        var rCC = roundHalf(B.compCarry   + cC), rCU = roundHalf(B.compCurrent   + cU);
         tx.set(balRef, {
-          annualCarry: rC, annualCurrent: rU, annualRemaining: roundHalf(rC + rU),
-          compRemaining: roundHalf((B.compRemaining || 0) + (L.compHours || 0)),
+          annualCarry: rAC, annualCurrent: rAU, annualRemaining: roundHalf(rAC + rAU),
+          compCarry: rCC,   compCurrent: rCU,   compRemaining:   roundHalf(rCC + rCU),
           annualUsedYTD: roundHalf((B.annualUsedYTD || 0) - (L.annualHours || 0)),
           compUsedYTD:   roundHalf((B.compUsedYTD   || 0) - (L.compHours   || 0)),
           updatedAt: serverTimestamp()
@@ -569,33 +805,78 @@ function cancelLeave(leaveId, reason) {
 }
 
 /* ---------- 8. 加班 ---------- */
+/**
+ * 加班時數規則檢查（秘書長 2026/08 說明）
+ * ① 至少 1 小時，第一小時必須是整數 → 合法值為 1, 1.5, 2, 2.5 …
+ * ② 工作日一天最多 4 小時（假日不限）
+ * @returns null 表示合法，否則回傳錯誤訊息
+ */
+function validateOvertime(hours, date, sameDayHours) {
+  var h = roundHalf(hours);
+  if (!(h >= OT_RULES.minHours))
+    return '加班至少要 ' + OT_RULES.minHours + ' 小時（第一小時以整數計）';
+  var d = toDate(date);
+  var weekend = !isWorkingDay(d);
+  if (!weekend) {
+    var total = roundHalf(h + (sameDayHours || 0));
+    if (total > OT_RULES.weekdayDailyCap)
+      return '工作日一天最多 ' + OT_RULES.weekdayDailyCap + ' 小時' +
+        (sameDayHours ? '（這天已經有 ' + sameDayHours + ' 小時）' : '');
+  }
+  return null;
+}
+
 function submitOvertime(o) {
   var u = currentUser();
   if (!u) return Promise.reject(new Error('尚未登入'));
   if (!canApply()) return Promise.reject(new Error('這個帳號沒有申請權限'));
   var h = roundHalf(o.hours);
-  if (!(h > 0)) return Promise.reject(new Error('加班時數必須大於 0'));
   var month = ym(o.date);
-  return monthlyOvertimeHours(u.email, month).then(function (used) {
+  return dayOvertimeHours(u.email, dateKey(o.date)).then(function (sameDay) {
+    var bad = validateOvertime(h, o.date, sameDay);
+    if (bad) throw new Error(bad);
+    return monthlyOvertimeHours(u.email, month);
+  }).then(function (used) {
     var over = used + h > MONTHLY_OT_CAP;
     return db.collection(COL.overtime).add({
       email: u.email, name: u.name, term: u.term || 1,
       date: TS.fromDate(toDate(o.date)),
       startAt: TS.fromDate(toDate(o.startAt)),
       endAt: TS.fromDate(toDate(o.endAt)),
-      hours: h, bonusHours: roundHalf(o.bonusHours || 0), ym: month,
+      hours: h, bonusHours: 0, isDispatch: false, ym: month,
+      dateKey: dateKey(o.date),
+      isWeekend: !isWorkingDay(toDate(o.date)),
       reason: o.reason || '', overCapWarning: over,
       status: STATUS.PENDING, reviewedBy: null, reviewedAt: null, adminNote: '',
       createdAt: serverTimestamp(), updatedAt: serverTimestamp()
     }).then(function (ref) {
       writeAudit('overtime.submit', ref.id, null, { hours: h });
-      return { id: ref.id, overCapWarning: over };
+      return { id: ref.id, overCapWarning: over, monthlyUsed: used + h };
     });
   });
 }
 
-function reviewOvertime(otId, decision, adminNote) {
+/** 同一天已經送出／核准的加班時數 */
+function dayOvertimeHours(email, dk) {
+  return db.collection(COL.overtime).where('email', '==', normEmail(email)).get()
+    .then(function (snap) {
+      var sum = 0;
+      snap.forEach(function (d) {
+        var o = d.data();
+        if ((o.dateKey || dateKey(o.date)) !== dk) return;
+        if (o.status === STATUS.PENDING || o.status === STATUS.APPROVED) sum += (o.hours || 0);
+      });
+      return sum;
+    }).catch(function () { return 0; });
+}
+
+/**
+ * 審核加班。
+ * @param opt.isDispatch 是否為核派加班 → 補休加倍（由秘書長決定，秘書不能自己勾）
+ */
+function reviewOvertime(otId, decision, adminNote, opt) {
   if (!isAdmin()) return Promise.reject(new Error('只有秘書長可以審核'));
+  opt = opt || {};
   var admin = currentUser();
   var ref = db.collection(COL.overtime).doc(otId);
   return db.runTransaction(function (tx) {
@@ -608,13 +889,19 @@ function reviewOvertime(otId, decision, adminNote) {
         adminNote: adminNote || '', updatedAt: serverTimestamp()
       };
       if (decision !== STATUS.APPROVED) { tx.update(ref, stamp); return; }
+      var dispatch = !!opt.isDispatch;
+      var bonus = dispatch ? roundHalf(O.hours * (OT_RULES.dispatchMultiplier - 1)) : 0;
+      stamp.isDispatch = dispatch;
+      stamp.bonusHours = bonus;
       var balRef = db.collection(COL.balances).doc(O.email);
       return tx.get(balRef).then(function (bs) {
         var B = normalizeBal(bs.exists ? bs.data() : null);
-        var gain = roundHalf(O.hours + (O.bonusHours || 0));
+        var gain = roundHalf(O.hours + bonus);
         tx.update(ref, stamp);
+        var nCU = roundHalf((B.compCurrent || 0) + gain);
         tx.set(balRef, {
-          compRemaining: roundHalf((B.compRemaining || 0) + gain),
+          compCurrent: nCU,
+          compRemaining: roundHalf((B.compCarry || 0) + nCU),
           compEarnedYTD: roundHalf((B.compEarnedYTD || 0) + gain),
           updatedAt: serverTimestamp()
         }, { merge: true });
@@ -714,6 +1001,26 @@ function monthOvertimeHours(ots, month) {
   return sum;
 }
 
+/* ---------- 站內通知 ---------- */
+function pushNotice(email, title, body, kind) {
+  return db.collection(COL.notices).add({
+    email: normEmail(email), title: title, body: body || '',
+    kind: kind || 'info', read: false, createdAt: serverTimestamp()
+  }).catch(function (e) { console.warn('[TPS] 通知寫入失敗', e); });
+}
+function watchMyNotices(cb) {
+  var u = currentUser();
+  return db.collection(COL.notices).where('email', '==', u.email)
+    .onSnapshot(function (s) { cb(snapList(s).sort(byNewest)); }, function (e) { _onError(e); });
+}
+function markNoticeRead(id) {
+  return setMerge(COL.notices, id, { read: true, readAt: serverTimestamp() });
+}
+function markAllNoticesRead(list) {
+  return Promise.all((list || []).filter(function (n) { return !n.read; })
+    .map(function (n) { return markNoticeRead(n.id); }));
+}
+
 /* ---------- 11. 稽核 ---------- */
 function writeAudit(action, targetId, before, after) {
   var u = currentUser();
@@ -767,7 +1074,17 @@ return {
   listAccounts: listAccounts, getAccount: getAccount, upsertAccount: upsertAccount,
   resetPassword: resetPassword, handoverAccount: handoverAccount, setMerge: setMerge,
   getBalance: getBalance, watchBalance: watchBalance, normalizeBal: normalizeBal,
-  splitAnnual: splitAnnual, checkCarryExpiry: checkCarryExpiry, grantAnnual: grantAnnual,
+  splitAnnual: splitAnnual, splitComp: splitComp, splitPool: splitPool,
+  checkCarryExpiry: checkCarryExpiry, checkAllExpiry: checkAllExpiry,
+  listSettlements: listSettlements, markSettlementPaid: markSettlementPaid,
+  grantAnnual: grantAnnual, autoGrantIfDue: autoGrantIfDue, autoGrantAll: autoGrantAll,
+  OT_RULES: OT_RULES, validateOvertime: validateOvertime,
+  loadCalendar: loadCalendar, calendarReady: calendarReady, dayType: dayType,
+  isWorkingDay: isWorkingDay, listCalendar: listCalendar,
+  setCalendarDay: setCalendarDay, deleteCalendarDay: deleteCalendarDay, dateKey: dateKey,
+  pushNotice: pushNotice, watchMyNotices: watchMyNotices,
+  markNoticeRead: markNoticeRead, markAllNoticesRead: markAllNoticesRead,
+  dayOvertimeHours: dayOvertimeHours,
   submitLeave: submitLeave, reviewLeave: reviewLeave, cancelLeave: cancelLeave,
   submitOvertime: submitOvertime, reviewOvertime: reviewOvertime,
   watchMyLeaves: watchMyLeaves, watchMyOvertime: watchMyOvertime,
