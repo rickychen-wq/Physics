@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A0D14">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>後台 — 請假加班系統</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -15,167 +17,214 @@
   --mono:'JetBrains Mono',ui-monospace,monospace; --sans:'Noto Sans TC',system-ui,sans-serif;
   --halo:0 0 0 1px var(--line), 0 0 30px rgba(217,169,60,.10);
   --halo-hi:0 0 0 1px rgba(217,169,60,.5), 0 0 40px rgba(217,169,60,.25);
+  --st:env(safe-area-inset-top); --sb:env(safe-area-inset-bottom);
+  --sl:env(safe-area-inset-left); --sr:env(safe-area-inset-right);
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{-webkit-text-size-adjust:100%}
-body{font-family:var(--sans);color:var(--txt);font-size:15px;line-height:1.6;min-height:100dvh;
+*{box-sizing:border-box;margin:0;padding:0;min-width:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%;background:var(--bg)}
+body{font-family:var(--sans);color:var(--txt);font-size:15px;line-height:1.6;
+  min-height:100dvh;overscroll-behavior-y:none;
   background:radial-gradient(800px 460px at 50% -8%,rgba(217,169,60,.11),transparent 62%),
-             linear-gradient(180deg,var(--bg2),var(--bg));background-attachment:fixed;
-  padding-bottom:env(safe-area-inset-bottom)}
+             linear-gradient(180deg,var(--bg2),var(--bg));background-attachment:fixed}
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.3;
   background:repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,transparent 1px 3px)}
 body>*{position:relative;z-index:2}
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
-h1,h2,h3{font-weight:700;line-height:1.3}
+h1,h2,h3{font-weight:700;line-height:1.35}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .hide{display:none!important}
 
-.wrap{max-width:560px;margin:0 auto;padding:18px 16px 100px}
-.gate{min-height:100dvh;display:grid;place-items:center;padding:22px}
+input,select,textarea{width:100%;max-width:100%;font-size:16px;padding:12px 13px;
+  background:var(--bg);color:var(--txt);border:1px solid rgba(255,255,255,.09);
+  border-radius:10px;-webkit-appearance:none;appearance:none;background-clip:padding-box}
+input[type=date],input[type=time]{min-height:48px;display:block;text-align:left;font-family:var(--mono)}
+input[type=checkbox]{width:19px;min-height:0;-webkit-appearance:auto;appearance:auto;padding:0}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),
+  linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 52%,calc(100% - 12px) 52%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px}
+textarea{min-height:78px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);outline:none;
+  box-shadow:0 0 0 3px rgba(217,169,60,.14)}
+::placeholder{color:var(--dim2)}
+
 .card{background:var(--card);border-radius:14px;box-shadow:var(--halo);margin-bottom:14px}
-.card.glow{box-shadow:var(--halo-hi)}
-.chd{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px}
+.chd{padding:14px 17px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px}
 .chd h2{font-size:14.5px;letter-spacing:.03em}
 .unit{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.1em;
   color:var(--dim2);white-space:nowrap;flex:none}
-.cbd{padding:18px}
-
-.brand{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--gold);margin-bottom:9px}
-.sub{color:var(--dim);font-size:13px}
-
+.cbd{padding:17px}
 .field{margin-bottom:15px}
-label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:6px}
-.hint{font-size:12px;color:var(--dim2);margin-top:6px;line-height:1.5}
-input,select,textarea{width:100%;padding:11px 13px;background:var(--bg);color:var(--txt);
-  border:1px solid rgba(255,255,255,.09);border-radius:9px;font-size:16px}
-input:focus,select:focus,textarea:focus{border-color:var(--gold);outline:none;box-shadow:0 0 0 3px rgba(217,169,60,.14)}
-::placeholder{color:var(--dim2)}
-textarea{min-height:70px;resize:vertical;font-size:15px}
-input[type=date],input[type=time],input[type=number]{font-family:var(--mono)}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field:last-child{margin-bottom:0}
+label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
+.hint{font-size:12px;color:var(--dim2);margin-top:7px;line-height:1.6}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
 .btn{background:linear-gradient(145deg,var(--gold-b),var(--gold));color:#1C1305;border:none;
-  border-radius:10px;padding:13px 22px;font-weight:700;cursor:pointer;font-size:15px;
-  box-shadow:0 0 24px rgba(217,169,60,.28)}
+  border-radius:11px;padding:14px 22px;font-weight:700;cursor:pointer;font-size:15px;
+  box-shadow:0 0 24px rgba(217,169,60,.26);width:100%}
 .btn:active{transform:scale(.985)}
 .btn:disabled{background:#2B3243;color:var(--dim2);box-shadow:none}
-.btn.wide{width:100%}
-.btn.sm{padding:8px 15px;font-size:13px;border-radius:8px}
+.btn.sm{padding:9px 15px;font-size:13.5px;border-radius:9px;width:auto}
 .btn.ghost{background:none;color:var(--dim);box-shadow:0 0 0 1px rgba(255,255,255,.13)}
 .btn.ghost:active{color:var(--gold)}
-.btn.ok{background:linear-gradient(145deg,#6ED09A,var(--ok));color:#06210F;box-shadow:0 0 18px rgba(79,190,129,.3)}
+.btn.ok{background:linear-gradient(145deg,#6ED09A,var(--ok));color:#06210F;
+  box-shadow:0 0 18px rgba(79,190,129,.28)}
 .btn.no{background:none;color:var(--bad);box-shadow:0 0 0 1px rgba(224,96,90,.45)}
 
-.err{background:rgba(224,96,90,.09);color:#F5928C;padding:11px 14px;border-radius:9px;
+.err{background:rgba(224,96,90,.09);color:#F5928C;padding:12px 14px;border-radius:10px;
   font-size:13.5px;margin-bottom:15px;box-shadow:0 0 0 1px rgba(224,96,90,.3)}
-.info{background:rgba(217,169,60,.07);color:var(--gold-b);padding:11px 14px;border-radius:9px;
-  font-size:13px;margin-bottom:15px;box-shadow:0 0 0 1px var(--line)}
-.empty{padding:38px 18px;text-align:center;color:var(--dim2);font-size:13.5px}
-
-.tag{font-size:10.5px;padding:3px 9px;border-radius:20px;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.info{background:rgba(217,169,60,.07);color:var(--gold-b);padding:12px 14px;border-radius:10px;
+  font-size:13px;line-height:1.7;margin-bottom:15px;box-shadow:0 0 0 1px var(--line)}
+.empty{padding:40px 18px;text-align:center;color:var(--dim2);font-size:13.5px}
+.tag{font-size:10.5px;padding:3px 10px;border-radius:20px;font-weight:700;
+  letter-spacing:.04em;white-space:nowrap;flex:none}
 .tag.pending{background:rgba(229,168,63,.15);color:var(--warn)}
 .tag.approved{background:rgba(79,190,129,.15);color:var(--ok)}
 .tag.rejected{background:rgba(224,96,90,.15);color:var(--bad)}
 .tag.cancelled{background:rgba(141,150,172,.13);color:var(--dim)}
 
-.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);background:var(--card2);
-  color:var(--txt);padding:12px 22px;border-radius:10px;font-size:14px;opacity:0;transition:.26s;
-  z-index:99;box-shadow:var(--halo-hi);max-width:88vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(26px + var(--sb));transform:translate(-50%,16px);
+  background:var(--card2);color:var(--txt);padding:13px 22px;border-radius:11px;font-size:14px;
+  opacity:0;transition:.26s;z-index:200;box-shadow:var(--halo-hi);max-width:88vw;text-align:center}
 .toast.is-in{opacity:1;transform:translate(-50%,0)}
 .toast--error{color:#F5928C}
 .toast--success{color:var(--ok)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* ===== 登入 ===== */
+#gate{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;justify-content:center;
+  padding:calc(28px + var(--st)) calc(24px + var(--sr)) calc(28px + var(--sb)) calc(24px + var(--sl));
+  background:radial-gradient(700px 420px at 50% 8%,rgba(217,169,60,.13),transparent 62%),
+             linear-gradient(180deg,var(--bg2),var(--bg))}
+.gate-in{width:100%;max-width:340px;margin:0 auto}
+.brand{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--gold);margin-bottom:10px}
+#gate h1{font-size:24px}
+.gsub{color:var(--dim);font-size:13.5px;margin:7px 0 28px}
 
+/* ===== 頂欄 ===== */
+.top{position:sticky;top:0;z-index:20;background:rgba(10,13,20,.9);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);padding-top:var(--st)}
+.tin{max-width:720px;margin:0 auto;padding:12px calc(16px + var(--sr)) 12px calc(16px + var(--sl));
+  display:flex;align-items:center;gap:12px}
+.tin .ttl{font-size:16px;font-weight:700}
+.tin .sub{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--gold)}
+.burger{margin-left:auto;width:44px;height:44px;border:none;background:none;cursor:pointer;
+  display:grid;place-items:center;gap:5px;flex:none;border-radius:11px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.1)}
+.burger i{display:block;width:19px;height:2px;background:var(--gold-b);border-radius:2px}
+.wrap{max-width:720px;margin:0 auto;
+  padding:16px calc(16px + var(--sr)) calc(60px + var(--sb)) calc(16px + var(--sl))}
 
-/* ===== 防爆版 ===== */
-*{min-width:0}
-.card,.item,.urow{overflow-wrap:anywhere}
-input,select,textarea{max-width:100%;width:100%;
-  -webkit-appearance:none;appearance:none;background-clip:padding-box}
-input[type=date]{min-height:46px;line-height:1.2;display:block;text-align:left}
-select{background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),
-  linear-gradient(135deg,var(--dim) 50%,transparent 50%);
-  background-position:calc(100% - 17px) 52%,calc(100% - 12px) 52%;
-  background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px}
-.tabs>*,.ugrid>*,.bgrid>*,.arow>*{min-width:0}
+/* ===== 抽屜 ===== */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;opacity:0;
+  pointer-events:none;transition:.25s}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:264px;max-width:82vw;z-index:70;
+  background:var(--card);box-shadow:-8px 0 40px rgba(0,0,0,.5);transform:translateX(100%);
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  padding:calc(20px + var(--st)) 16px calc(20px + var(--sb)) 16px;overflow-y:auto}
+.drawer.on{transform:translateX(0)}
+.drawer h3{font-size:12px;letter-spacing:.2em;color:var(--gold);
+  font-family:var(--mono);margin:6px 0 14px}
+.ditem{display:flex;align-items:center;gap:11px;width:100%;background:none;border:none;
+  padding:14px 13px;border-radius:11px;cursor:pointer;color:var(--txt);font-size:15px;
+  text-align:left;margin-bottom:6px}
+.ditem span{font-size:19px;flex:none}
+.ditem[aria-selected="true"]{background:rgba(217,169,60,.1);color:var(--gold-b);
+  box-shadow:0 0 0 1px rgba(217,169,60,.4)}
+.dsep{height:1px;background:rgba(255,255,255,.07);margin:12px 0}
 
-/* --- 後台專屬 --- */
-.wrap{max-width:720px;padding-bottom:calc(120px + env(safe-area-inset-bottom))}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:16px}
-.tb{background:var(--card);border:none;border-radius:11px;padding:13px 4px;cursor:pointer;
-  color:var(--dim);font-size:13.5px;font-weight:600;white-space:nowrap;
-  box-shadow:0 0 0 1px rgba(255,255,255,.05)}
-.tb[aria-selected="true"]{color:var(--gold-b);box-shadow:var(--halo-hi)}
-.tb .bd{display:inline-block;margin-left:6px;background:var(--warn);color:#1C1305;
-  border-radius:10px;padding:0 7px;font-size:11px;font-weight:700;font-family:var(--mono)}
-.item{padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.05)}
+/* ===== 待審核 ===== */
+.item{padding:16px 17px;border-bottom:1px solid rgba(255,255,255,.05)}
 .item:last-child{border-bottom:none}
 .itop{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:5px}
 .inm{font-weight:700;font-size:15.5px}
 .ity{color:var(--gold-b);font-size:14px}
 .ih{margin-left:auto;font-family:var(--mono);font-weight:700;color:var(--gold-b);
   font-size:15px;white-space:nowrap;flex:none}
-.im{font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+.im{font-family:var(--mono);font-size:12.5px;color:var(--dim);line-height:1.6}
 .inn{font-size:13px;color:var(--dim);margin-top:4px}
 .flg{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;font-weight:700;
   background:rgba(229,168,63,.16);color:var(--warn)}
 .arow{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
-.arow input{grid-column:1 / -1;font-size:14px;padding:10px 12px}
-.arow .btn{width:100%;padding:11px 8px}
+.arow input{grid-column:1 / -1}
 .bonus{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:12.5px;
   color:var(--dim);flex-wrap:wrap}
-.bonus input{width:96px;flex:none;font-size:14px;padding:9px 10px;text-align:center}
-.urow{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.05)}
-.urow:last-child{border-bottom:none}
-.uhd{display:flex;align-items:center;gap:9px;margin-bottom:11px;flex-wrap:wrap}
-.uhd b{font-size:15px}
-.uid{font-family:var(--mono);font-size:12px;color:var(--dim2)}
-.uhd .st{margin-left:auto;font-size:11px;padding:3px 10px;border-radius:20px;
-  font-weight:700;white-space:nowrap;flex:none}
+.bonus input{width:100px;flex:none;text-align:center;padding:10px}
+.badge{display:inline-block;margin-left:7px;background:var(--warn);color:#1C1305;
+  border-radius:10px;padding:0 8px;font-size:11px;font-weight:700;font-family:var(--mono)}
+
+/* ===== 帳號 ===== */
+.acc{padding:16px 17px;border-bottom:1px solid rgba(255,255,255,.05)}
+.acc:last-child{border-bottom:none}
+.ahd{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:4px}
+.ahd b{font-size:16px}
+.ahd .em{font-family:var(--mono);font-size:11.5px;color:var(--dim2);width:100%}
+.st{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700;
+  white-space:nowrap;flex:none;margin-left:auto}
 .st.on{background:rgba(79,190,129,.15);color:var(--ok)}
 .st.off{background:rgba(141,150,172,.14);color:var(--dim)}
-.ugrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:end}
-.ugrid .fl{font-size:11.5px;color:var(--dim);margin-bottom:5px;display:block}
-.ugrid > div{min-width:0}
-.ugrid select,.ugrid input{font-size:14px;padding:9px 11px;width:100%}
-.bgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
-.bx{background:var(--bg);border-radius:9px;padding:10px 12px;box-shadow:0 0 0 1px rgba(255,255,255,.05)}
-.bx .k{font-size:11px;color:var(--dim)}
-.bx .v{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--gold-b)}
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.bx{background:var(--bg);border-radius:10px;padding:11px 12px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.05);cursor:pointer}
+.bx.ro{cursor:default}
+.bx .k{font-size:11px;color:var(--dim);line-height:1.4}
+.bx .v{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--gold-b);line-height:1.45}
+.bx.ro .v{color:var(--txt)}
+.bx .ed{font-size:10px;color:var(--dim2);margin-top:2px}
+.editrow{display:flex;gap:8px;margin-top:9px;align-items:center}
+.editrow input{flex:1}
+.law{font-size:12.5px;color:var(--dim);line-height:1.7;margin-top:12px;
+  background:rgba(255,255,255,.03);border-radius:10px;padding:11px 13px}
+.law b{color:var(--gold-b);font-family:var(--mono)}
+.abtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+
+/* ===== 紀錄 ===== */
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:15px 16px;
+  border-bottom:1px solid var(--line)}
+.filters .full{grid-column:1 / -1}
+.rec{padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.05)}
+.rec:last-child{border-bottom:none}
+.trail{margin-top:9px;padding-top:9px;border-top:1px dashed rgba(255,255,255,.08);
+  font-size:12px;color:var(--dim2);line-height:1.85}
+.trail b{font-family:var(--mono);color:var(--dim)}
+.termtag{font-size:10.5px;padding:2px 8px;border-radius:20px;font-weight:700;
+  background:rgba(141,150,172,.14);color:var(--dim)}
 
 </style>
 </head>
 <body>
-
-<section id="gate" class="gate">
-  <div style="width:100%;max-width:360px">
-    <div class="card"><div class="cbd" style="padding:32px 26px">
-      <div class="brand">TPS · 後台</div>
-      <h1 style="font-size:20px">秘書長審核台</h1>
-      <p class="sub" style="margin:6px 0 22px">輸入後台密碼。</p>
-      <div id="gErr" class="err hide"></div>
-      <div class="field"><input type="password" id="gpw" placeholder="密碼"></div>
-      <button class="btn wide" id="gBtn">進入</button>
-    </div></div>
+<section id="gate">
+  <div class="gate-in">
+    <div class="brand">TPS · 後台</div>
+    <h1>秘書長審核台</h1>
+    <p class="gsub">請輸入後台密碼</p>
+    <div id="gErr" class="err hide"></div>
+    <div class="field"><input type="password" id="gPw" placeholder="密碼"></div>
+    <button class="btn" id="gBtn">進入</button>
   </div>
 </section>
 
-<div id="app" class="hide"><div class="wrap">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <div><div class="brand" style="margin:0">TPS · 後台</div>
-      <div style="font-size:17px;font-weight:700">秘書長審核台</div></div>
-    <button class="btn ghost sm" id="outBtn" style="margin-left:auto">登出</button>
-  </div>
+<div id="app" class="hide">
+<header class="top"><div class="tin">
+  <div><div class="sub">TPS · 後台</div><div class="ttl" id="pageTitle">審核</div></div>
+  <button class="burger" id="burger" aria-label="選單"><i></i><i></i><i></i></button>
+</div></header>
 
-  <div class="tabs">
-    <button class="tb" data-p="rev" aria-selected="true">待審核<span class="bd hide" id="bdAll">0</span></button>
-    <button class="tb" data-p="ppl" aria-selected="false">名單</button>
-    <button class="tb" data-p="acc" aria-selected="false">帳號</button>
-    <button class="tb" data-p="bal" aria-selected="false">時數</button>
-  </div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <h3>選單</h3>
+  <button class="ditem" data-p="Rev" aria-selected="true"><span>📥</span>審核</button>
+  <button class="ditem" data-p="Acc" aria-selected="false"><span>👤</span>帳號與時數</button>
+  <button class="ditem" data-p="Log" aria-selected="false"><span>🗂️</span>完整紀錄</button>
+  <div class="dsep"></div>
+  <button class="ditem" id="dOut"><span>🚪</span>登出</button>
+</aside>
 
+<main class="wrap">
+  <!-- 審核 -->
   <div id="pRev">
     <section class="card">
       <div class="chd"><h2>請假</h2><span class="unit" id="cL">0 筆</span></div>
@@ -187,135 +236,126 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),
     </section>
   </div>
 
-  <div id="pPpl" class="hide">
-    <section class="card">
-      <div class="chd"><h2>人員名單</h2><span class="unit">在職・離職</span></div>
-      <div id="uList"><div class="empty">載入中…</div></div>
-    </section>
-    <section class="card">
-      <div class="chd"><h2>新增人員</h2><span class="unit">可同時填初始時數</span></div>
-      <div class="cbd">
-        <div class="info">先把人建好，之後她用這個姓名註冊帳號時，時數和紀錄就會自動接上。</div>
-        <div class="field"><label class="lb">中文姓名</label><input type="text" id="nsName" placeholder="請填全名"></div>
-        <div class="field"><label class="lb">到職日（選填）</label><input type="date" id="nsHire"></div>
-        <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
-          <div class="field"><label class="lb">特休 — 去年遞延</label><input type="number" id="nsCarry" step="0.5" value="0"></div>
-          <div class="field"><label class="lb">特休 — 今年新給</label><input type="number" id="nsCur" step="0.5" value="0"></div>
-        </div>
-        <div class="field"><label class="lb">加班補休剩餘</label><input type="number" id="nsComp" step="0.5" value="0"></div>
-        <button class="btn wide" id="nsB">建立</button>
-      </div>
-    </section>
-  </div>
-
+  <!-- 帳號 -->
   <div id="pAcc" class="hide">
     <section class="card">
-      <div class="chd"><h2>帳號</h2><span class="unit">重設密碼・刪除</span></div>
-      <div class="info" style="margin:14px 16px 0">刪除帳號只會讓她無法登入，<b>名單、時數、請假紀錄都會保留</b>。<br>她之後可以用同一個姓名重新註冊，資料會自動接回去。</div>
-      <div id="acList"><div class="empty">載入中…</div></div>
+      <div class="chd"><h2>帳號與時數</h2><span class="unit">點數字可直接改</span></div>
+      <div id="accList"><div class="empty">載入中…</div></div>
     </section>
   </div>
 
-  <div id="pBal" class="hide">
+  <!-- 紀錄 -->
+  <div id="pLog" class="hide">
     <section class="card">
-      <div class="chd"><h2>目前時數</h2><span class="unit">單位：小時</span></div>
-      <div id="bList"><div class="empty">載入中…</div></div>
-    </section>
-    <section class="card">
-      <div class="chd"><h2>手動調整</h2><span class="unit">會留稽核紀錄</span></div>
-      <div class="cbd">
-        <div class="field"><label class="lb">對象</label><select id="aU"></select></div>
-        <div class="field"><label class="lb">項目</label><select id="aK">
-          <option value="annualCurrent">特休 — 今年新給</option>
-          <option value="annualCarry">特休 — 去年遞延（會優先扣）</option>
-          <option value="compRemaining">加班補休剩餘</option>
-        </select></div>
-        <div class="field"><label class="lb">改成（小時）</label><input type="number" id="aV" step="0.5"></div>
-        <div class="field"><label class="lb">原因</label><input type="text" id="aN" placeholder="例如 年度特休發放、匯入舊資料"></div>
-        <button class="btn wide" id="aB">套用</button>
+      <div class="filters">
+        <select id="fWho" class="full"><option value="">全部人員</option></select>
+        <select id="fKind"><option value="">請假＋加班</option>
+          <option value="leave">只看請假</option><option value="overtime">只看加班</option></select>
+        <select id="fStat"><option value="">全部狀態</option>
+          <option value="pending">待審核</option><option value="approved">同意</option>
+          <option value="rejected">不同意</option><option value="cancelled">已撤銷</option></select>
+        <select id="fRange" class="full">
+          <option value="m">本月</option><option value="y" selected>今年</option>
+          <option value="ly">去年</option><option value="all">全部</option>
+          <option value="custom">自訂期間</option></select>
+        <div class="full hide" id="customRange">
+          <div class="row2"><input type="date" id="fFrom"><input type="date" id="fTo"></div>
+        </div>
       </div>
-    </section>
-    <section class="card">
-      <div class="chd"><h2>年度作業</h2><span class="unit">一年做一次</span></div>
-      <div class="cbd">
-        <div class="info">今年沒休完的特休會轉成「遞延」留到明年，請假時優先扣。<br>
-          原本就有的遞延如果還沒休完，依勞基法要折發工資，系統會算給你看。</div>
-        <div class="field"><label class="lb">對象</label><select id="gU"></select></div>
-        <div class="field"><label class="lb">明年新給的特休（小時）</label><input type="number" id="gH" step="0.5" placeholder="例如 70"></div>
-        <div class="field"><label class="lb">遞延到期日</label><input type="date" id="gE"></div>
-        <button class="btn wide" id="gB">執行年度換算</button>
-        <div id="gOut" class="info hide" style="margin:14px 0 0"></div>
-      </div>
+      <div class="chd" style="border-top:none"><h2>結果</h2><span class="unit" id="logCnt">—</span></div>
+      <div id="logList"><div class="empty">載入中…</div></div>
     </section>
   </div>
-</div></div>
+</main>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="shared.js"></script>
 <script>
+if(!window.TPS){
+  document.body.innerHTML =
+    '<div style="padding:70px 26px;text-align:center;font-family:system-ui;color:#EAEDF4">' +
+    '<div style="font-size:44px">🔄</div><h2 style="margin:12px 0 8px">需要重新載入</h2>' +
+    '<p style="color:#8D96AC;font-size:14px;line-height:1.7">瀏覽器沒有載到最新的程式檔。<br>' +
+    '請下拉重新整理，或關掉分頁重開。</p>' +
+    '<button style="margin-top:18px;padding:12px 26px;border:none;border-radius:10px;' +
+    'background:#D9A93C;color:#1C1305;font-weight:700;font-size:15px" ' +
+    'onclick="location.reload(true)">重新載入</button></div>';
+  throw new Error('shared.js 未載入');
+}
+var T = window.TPS, el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.roundHalf;
+T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'error'); });
 
-var T = window.TPS;
-var el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.roundHalf;
-T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e.code || e), 'error'); });
-var S = { unsub:[], users:[], busy:false, nL:0, nO:0 };
+var S = { page:'Rev', unsub:[], busy:false, nL:0, nO:0, accounts:[], bals:{} };
+var TITLE = { Rev:'審核', Acc:'帳號與時數', Log:'完整紀錄' };
+function showErr(id,msg){ var b=el('#'+id);
+  if(!msg){ b.classList.add('hide'); return; } b.textContent=msg; b.classList.remove('hide'); }
 
-function showErr(id,msg){ var b=el('#'+id); if(!msg){b.classList.add('hide');return;} b.textContent=msg; b.classList.remove('hide'); }
-
+/* ---------- 進入 ---------- */
 el('#gBtn').onclick = function(){
   showErr('gErr','');
-  if(!T.adminLogin(el('#gpw').value)) return showErr('gErr','密碼不正確。');
-  el('#gate').classList.add('hide'); el('#app').classList.remove('hide');
+  if(!T.adminLogin(el('#gPw').value)) return showErr('gErr','密碼不正確。');
+  el('#gate').classList.add('hide');
+  el('#app').classList.remove('hide');
   boot();
 };
-el('#gpw').addEventListener('keydown', function(e){ if(e.key==='Enter') el('#gBtn').click(); });
-el('#outBtn').onclick = function(){
+el('#gPw').addEventListener('keydown', function(e){ if(e.key==='Enter') el('#gBtn').click(); });
+el('#dOut').onclick = function(){
   S.unsub.forEach(function(f){ f(); }); S.unsub = [];
-  T.adminLogout();
-  el('#app').classList.add('hide'); el('#gate').classList.remove('hide');
-  el('#gpw').value = '';
+  T.adminLogout(); closeDrawer();
+  el('#app').classList.add('hide'); el('#gate').classList.remove('hide'); el('#gPw').value='';
 };
 
 function boot(){
-  S.unsub.push(T.watchPending(renderLeaves));
+  S.unsub.push(T.watchPendingLeaves(renderLeaves));
   S.unsub.push(T.watchPendingOvertime(renderOts));
-  refreshUsers();
+  loadAccounts();
 }
 
-Array.prototype.forEach.call(document.querySelectorAll('.tb'), function(t){
-  t.onclick = function(){
-    Array.prototype.forEach.call(document.querySelectorAll('.tb'), function(x){
-      x.setAttribute('aria-selected', x === t);
-    });
-    ['rev','ppl','acc','bal'].forEach(function(p){
-      el('#p' + p[0].toUpperCase() + p.slice(1)).classList.toggle('hide', p !== t.dataset.p);
-    });
-    if(t.dataset.p === 'bal') renderBal();
-    if(t.dataset.p === 'ppl') refreshUsers();
-    if(t.dataset.p === 'acc') renderAccounts();
+/* ---------- 抽屜 ---------- */
+function openDrawer(){ el('#drawer').classList.add('on'); el('#scrim').classList.add('on'); }
+function closeDrawer(){ el('#drawer').classList.remove('on'); el('#scrim').classList.remove('on'); }
+el('#burger').onclick = openDrawer;
+el('#scrim').onclick = closeDrawer;
+Array.prototype.forEach.call(document.querySelectorAll('.ditem[data-p]'), function(b){
+  b.onclick = function(){
+    S.page = b.dataset.p;
+    Array.prototype.forEach.call(document.querySelectorAll('.ditem[data-p]'), function(x){
+      x.setAttribute('aria-selected', x === b); });
+    ['Rev','Acc','Log'].forEach(function(p){ el('#p'+p).classList.toggle('hide', p !== S.page); });
+    el('#pageTitle').textContent = TITLE[S.page];
+    closeDrawer(); window.scrollTo(0,0);
+    if(S.page === 'Acc') loadAccounts();
+    if(S.page === 'Log') loadLog();
   };
 });
 
-/* ---------- 同意 / 駁回 ---------- */
+/* ---------- 同意／駁回 ---------- */
 function actions(onOk, onNo){
   var w = document.createElement('div'); w.className = 'arow';
-  var note = document.createElement('input'); note.placeholder = '註記（選填，申請人看得到）';
-  var ok = document.createElement('button'); ok.className = 'btn ok sm'; ok.textContent = '同意';
-  var no = document.createElement('button'); no.className = 'btn no sm'; no.textContent = '不同意';
+  var note = document.createElement('input');
+  note.placeholder = '註記（選填，申請人看得到）';
+  var ok = document.createElement('button'); ok.className='btn ok sm'; ok.textContent='同意';
+  var no = document.createElement('button'); no.className='btn no sm'; no.textContent='不同意';
   function run(fn, verb){
     if(S.busy) return;
     S.busy = true; ok.disabled = no.disabled = true;
-    fn(note.value.trim()).then(function(){ toast('已' + verb, 'success'); })
-      .catch(function(e){ toast(e.message, 'error'); ok.disabled = no.disabled = false; })
-      .then(function(){ S.busy = false; });
+    fn(note.value.trim()).then(function(){ toast('已'+verb,'success'); })
+     .catch(function(e){ toast(e.message,'error'); ok.disabled = no.disabled = false; })
+     .then(function(){ S.busy = false; });
   }
-  ok.onclick = function(){ run(onOk, '同意'); };
-  no.onclick = function(){ if(confirm('確定駁回？')) run(onNo, '駁回'); };
+  ok.onclick = function(){ run(onOk,'同意'); };
+  no.onclick = function(){ if(confirm('確定駁回？')) run(onNo,'駁回'); };
   w.appendChild(note); w.appendChild(ok); w.appendChild(no);
   return w;
 }
 function badge(){
-  var n = S.nL + S.nO, b = el('#bdAll');
-  b.textContent = n; b.classList.toggle('hide', n === 0);
+  var n = S.nL + S.nO;
+  el('#pageTitle').textContent = TITLE[S.page] + (S.page==='Rev' && n ? '' : '');
+  var d = document.querySelector('.ditem[data-p="Rev"]');
+  var old = d.querySelector('.badge'); if(old) old.remove();
+  if(n){ var s = document.createElement('span'); s.className='badge'; s.textContent=n; d.appendChild(s); }
 }
 
 function renderLeaves(list){
@@ -324,18 +364,20 @@ function renderLeaves(list){
   if(!list.length){ box.innerHTML = '<div class="empty">沒有待審的假單。</div>'; return; }
   box.innerHTML = '';
   list.forEach(function(r){
-    var label = (r.type === 'other' && r.otherType) ? r.otherType : T.leaveTypeLabel(r.type);
+    var label = (r.type==='other' && r.otherType) ? r.otherType : T.leaveTypeLabel(r.type);
     var d = document.createElement('div'); d.className = 'item';
     var h = '<div class="itop"><span class="inm">' + esc(r.name) + '</span>' +
       '<span class="ity">' + esc(label) + '</span>' +
       (r.isLate ? '<span class="flg">事後補請</span>' : '') +
       (r.segments && r.segments.length > 1 ? '<span class="flg">跨月</span>' : '') +
       '<span class="ih">' + r.hours + ' 小時</span></div>' +
-      '<div class="im">' + T.fmtDateTime(r.startAt) + ' → ' + T.fmtDateTime(r.endAt) + '</div>';
+      '<div class="im">' + T.fmtDateTime(r.startAt) + ' → ' + T.fmtDateTime(r.endAt) + '</div>' +
+      '<div class="im">送出 ' + T.fmtStamp(r.createdAt) + '</div>';
     if(r.annualHours > 0) h += '<div class="inn">扣特休 ' + r.annualHours + ' 小時</div>';
     if(r.compHours > 0)   h += '<div class="inn">扣補休 ' + r.compHours + ' 小時</div>';
     if(r.segments && r.segments.length > 1)
-      h += '<div class="inn">分月計入：' + r.segments.map(function(s){ return s.ym + ' ' + s.hours + 'h'; }).join('、') + '</div>';
+      h += '<div class="inn">分月計入：' + r.segments.map(function(s){
+        return s.ym + ' ' + s.hours + 'h'; }).join('、') + '</div>';
     if(r.isLate && r.lateReason) h += '<div class="inn">補請原因：' + esc(r.lateReason) + '</div>';
     if(r.needsProxy) h += '<div class="inn">職務代理人：' + esc(r.proxyName || '未填') + '</div>';
     d.innerHTML = h;
@@ -355,14 +397,14 @@ function renderOts(list){
     var d = document.createElement('div'); d.className = 'item';
     d.innerHTML = '<div class="itop"><span class="inm">' + esc(o.name) + '</span>' +
       '<span class="ity">加班</span>' +
-      (o.overCapWarning ? '<span class="flg">本月已逾 46 小時</span>' : '') +
+      (o.overCapWarning ? '<span class="flg">本月逾 46 小時</span>' : '') +
       '<span class="ih">' + o.hours + ' 小時</span></div>' +
-      '<div class="im">' + T.fmtDate(o.date) + '　' +
-        T.fmtDateTime(o.startAt).slice(-5) + ' – ' + T.fmtDateTime(o.endAt).slice(-5) + '</div>' +
+      '<div class="im">' + T.fmtDate(o.date) + '　' + T.fmtTime(o.startAt) + ' – ' + T.fmtTime(o.endAt) + '</div>' +
+      '<div class="im">送出 ' + T.fmtStamp(o.createdAt) + '</div>' +
       (o.reason ? '<div class="inn">事由：' + esc(o.reason) + '</div>' : '') +
       '<div class="bonus"><span>核派加班增額</span>' +
-        '<input type="number" step="0.5" min="0" id="bn_' + o.id + '" value="' + (o.bonusHours || 0) + '">' +
-        '<span>小時</span></div>';
+      '<input type="number" step="0.5" min="0" id="bn_' + o.id + '" value="' + (o.bonusHours||0) + '">' +
+      '<span>小時</span></div>';
     d.appendChild(actions(
       function(n){
         var b = parseFloat(el('#bn_' + o.id).value) || 0;
@@ -376,181 +418,243 @@ function renderOts(list){
   });
 }
 
-/* ---------- 人員 ---------- */
-function toInput(v){
-  if(!v) return '';
-  var d = v.toDate ? v.toDate() : new Date(v);
-  if(isNaN(d)) return '';
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-}
-function refreshUsers(){
-  return T.listStaff().then(function(us){
-    S.users = us;
-    var box = el('#uList');
-    if(!us.length){ box.innerHTML = '<div class="empty">還沒有人註冊。</div>'; return; }
-    box.innerHTML = '';
-    us.forEach(function(u){
-      var d = document.createElement('div'); d.className = 'urow';
-      d.innerHTML = '<div class="uhd"><b>' + esc(u.name || '（未填姓名）') + '</b>' +
-        '<span class="st ' + (u.active === false ? 'off' : 'on') + '">' +
-          (u.active === false ? '已離職' : '在職') + '</span></div>' +
-        '<div class="ugrid">' +
-          '<div><span class="fl">到職日</span>' +
-            '<input type="date" class="hi" data-uid="' + u.sid + '" value="' + toInput(u.hireDate) + '"></div>' +
-          '<div><span class="fl">狀態</span>' +
-            '<button class="btn ghost sm tg" data-uid="' + u.sid + '">' +
-              (u.active === false ? '改為在職' : '改為離職') + '</button></div>' +
-        '</div>';
-      box.appendChild(d);
-    });
-    bindUsers();
-    var opts = us.map(function(u){
-      return '<option value="' + u.sid + '">' + esc(u.name) +
-        (u.active === false ? '（已離職）' : '') + '</option>'; }).join('');
-    el('#aU').innerHTML = opts;
-    el('#gU').innerHTML = opts;
-  });
-}
-function bindUsers(){
-  Array.prototype.forEach.call(document.querySelectorAll('.hi'), function(i){
-    i.onchange = function(){
-      T.upsertStaff(i.dataset.uid, { hireDate: i.value ? T.Timestamp.fromDate(new Date(i.value + 'T00:00:00')) : null })
-        .then(function(){ toast('到職日已更新','success'); });
-    };
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('.tg'), function(b){
-    b.onclick = function(){
-      var u = null;
-      S.users.forEach(function(x){ if(x.sid === b.dataset.uid) u = x; });
-      var toActive = u.active === false;
-      if(!confirm(toActive ? '把「' + u.name + '」改為在職？' : '把「' + u.name + '」改為離職？她將無法登入，但資料全部保留。')) return;
-      T.upsertStaff(u.sid, { active: toActive })
-        .then(function(){ toast(toActive ? '已改為在職' : '已改為離職','success'); refreshUsers(); });
-    };
-  });
-}
-
-/* ---------- 新增人員 ---------- */
-el('#nsB').onclick = function(){
-  var name = el('#nsName').value.trim();
-  if(!name) return toast('請填姓名','error');
-  var b = el('#nsB'); b.disabled = true; b.textContent = '建立中…';
-  T.createStaff(name, {
-    hireDate: el('#nsHire').value ? new Date(el('#nsHire').value + 'T00:00:00') : null,
-    annualCarry: parseFloat(el('#nsCarry').value) || 0,
-    annualCurrent: parseFloat(el('#nsCur').value) || 0,
-    compRemaining: parseFloat(el('#nsComp').value) || 0
+/* ---------- 帳號與時數 ---------- */
+function loadAccounts(){
+  return T.listAccounts().then(function(list){
+    S.accounts = list;
+    return Promise.all(list.map(function(a){
+      return T.getBalance(a.email).then(function(b){ S.bals[a.email] = b; });
+    }));
   }).then(function(){
-    toast('已建立 ' + name, 'success');
-    ['#nsName','#nsHire'].forEach(function(i){ el(i).value = ''; });
-    ['#nsCarry','#nsCur','#nsComp'].forEach(function(i){ el(i).value = '0'; });
-    refreshUsers();
-  }).catch(function(e){ toast(e.message,'error'); })
-    .then(function(){ b.disabled = false; b.textContent = '建立'; });
-};
+    fillWhoFilter();
+    return Promise.all(S.accounts.map(function(a){
+      return Promise.all([
+        T.fetchAllRecords({ email:a.email, kind:'leave' }),
+        T.fetchAllRecords({ email:a.email, kind:'overtime' })
+      ]).then(function(r){ a._lv = r[0]; a._ot = r[1]; });
+    }));
+  }).then(renderAccounts).catch(function(e){ toast(e.message,'error'); });
+}
 
-/* ---------- 帳號管理 ---------- */
+var THIS_MONTH = (function(){ var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); })();
+
 function renderAccounts(){
-  Promise.all([T.listAccounts(), T.listStaff()]).then(function(r){
-    var accs = r[0], staff = r[1];
-    var nameOf = {};
-    staff.forEach(function(s){ nameOf[s.sid] = s.name; });
-    var box = el('#acList');
-    if(!accs.length){ box.innerHTML = '<div class="empty">還沒有人註冊帳號。</div>'; return; }
-    box.innerHTML = '';
-    accs.forEach(function(a){
-      var d = document.createElement('div'); d.className = 'urow';
-      d.innerHTML = '<div class="uhd"><b>' + esc(a.name || nameOf[a.sid] || '（還沒填姓名）') + '</b>' +
-        '<span class="uid">ID：' + esc(a.loginId) + '</span></div>';
-      var row = document.createElement('div'); row.className = 'ugrid';
-      var rp = document.createElement('button');
-      rp.className = 'btn ghost sm'; rp.textContent = '重設密碼';
-      rp.onclick = function(){
-        var pw = prompt('幫「' + (a.name || a.loginId) + '」設定新密碼（至少 4 個字元）');
-        if(pw === null) return;
-        T.resetPassword(a.loginId, pw)
-          .then(function(){ toast('密碼已重設為：' + pw, 'success'); })
-          .catch(function(e){ toast(e.message,'error'); });
-      };
-      var del = document.createElement('button');
-      del.className = 'btn no sm'; del.textContent = '刪除帳號';
-      del.onclick = function(){
-        if(!confirm('確定刪除帳號「' + a.loginId + '」？\n\n她將無法登入。名單、時數、請假紀錄都會保留。')) return;
-        T.deleteAccount(a.loginId)
-          .then(function(){ toast('已刪除','success'); renderAccounts(); })
-          .catch(function(e){ toast(e.message,'error'); });
-      };
-      row.appendChild(rp); row.appendChild(del);
-      d.appendChild(row);
-      box.appendChild(d);
-    });
-  }).catch(function(e){ toast(e.message,'error'); });
+  var box = el('#accList');
+  if(!S.accounts.length){ box.innerHTML = '<div class="empty">還沒有任何帳號。</div>'; return; }
+  box.innerHTML = '';
+  S.accounts.forEach(function(a){
+    var b = S.bals[a.email] || {};
+    var moL = T.monthLeaveHours(a._lv || [], THIS_MONTH);
+    var moO = T.monthOvertimeHours(a._ot || [], THIS_MONTH);
+    var d = document.createElement('div'); d.className = 'acc';
+    d.innerHTML =
+      '<div class="ahd"><b>' + esc(a.name || '（未設定姓名）') + '</b>' +
+        (a.term > 1 ? '<span class="termtag">第 ' + a.term + ' 任</span>' : '') +
+        '<span class="st ' + (a.active === false ? 'off' : 'on') + '">' +
+          (a.active === false ? '已停用' : '在職') + '</span>' +
+        '<span class="em">' + esc(a.email) + '</span></div>' +
+      '<div class="grid4">' +
+        boxHtml(a.email, 'annualCarry',   '去年遞延（先扣）', b.annualCarry   || 0, true) +
+        boxHtml(a.email, 'annualCurrent', '今年特休',         b.annualCurrent || 0, true) +
+        boxHtml(a.email, 'compRemaining', '加班補休',         b.compRemaining || 0, true) +
+        boxHtml(a.email, '_total',        '特休合計',         b.annualRemaining || 0, false) +
+        boxHtml(a.email, '_moL',          '本月已請假',       moL, false) +
+        boxHtml(a.email, '_moO',          '本月已加班',       moO, false) +
+      '</div>' + lawHtml(a);
+    var btns = document.createElement('div'); btns.className = 'abtns';
+    btns.appendChild(mkBtn('改姓名', 'ghost', function(){ doRename(a); }));
+    btns.appendChild(mkBtn('重設密碼', 'ghost', function(){ doResetPw(a); }));
+    btns.appendChild(mkBtn('設定到職日', 'ghost', function(){ doHire(a); }));
+    btns.appendChild(mkBtn('換人接手', 'no', function(){ doHandover(a); }));
+    d.appendChild(btns);
+    box.appendChild(d);
+  });
+  bindBoxes();
+}
+function mkBtn(text, cls, fn){
+  var b = document.createElement('button');
+  b.className = 'btn ' + cls + ' sm'; b.style.width = '100%';
+  b.textContent = text; b.onclick = fn; return b;
+}
+function boxHtml(email, key, label, val, editable){
+  return '<div class="bx' + (editable ? '' : ' ro') + '"' +
+    (editable ? ' data-em="' + esc(email) + '" data-k="' + key + '"' : '') + '>' +
+    '<div class="k">' + label + '</div><div class="v">' + val + '</div>' +
+    (editable ? '<div class="ed">點一下可修改</div>' : '') + '</div>';
+}
+function lawHtml(a){
+  if(!a.hireDate) return '<div class="law">還沒設到職日，設了就會自動算法定特休</div>';
+  var at = a.resignDate ? T.toDate(a.resignDate) : new Date();
+  var sn = T.seniority(a.hireDate, at), dy = T.annualLeaveDays(a.hireDate, at);
+  var h = '<div class="law">到職 ' + T.fmtDate(a.hireDate) + '　年資 <b>' + sn.years +
+    '</b> 年 <b>' + sn.months + '</b> 個月<br>法定特休 <b>' + dy + '</b> 日（<b>' +
+    (dy * T.HOURS_PER_DAY) + '</b> 小時）';
+  var up = T.nextUpgrade(a.hireDate, at);
+  if(up && !a.resignDate)
+    h += '<br>下次調升 ' + T.fmtDate(up.date) + ' → ' + up.days + ' 日（' + up.hours + ' 小時）';
+  return h + '</div>';
 }
 
-/* ---------- 時數 ---------- */
-function renderBal(){
-  var staff = S.users;
-  if(!staff.length){ el('#bList').innerHTML = '<div class="empty">還沒有秘書身分的人員。</div>'; return; }
-  Promise.all(staff.map(function(u){
-    return T.getBalance(u.sid).then(function(b){ return { u:u, b:b }; });
-  })).then(function(rows){
-    el('#bList').innerHTML = rows.map(function(r){
-      return '<div class="urow"><div class="uhd"><b>' + esc(r.u.name) + '</b>' +
-        (r.u.active === false ? '<span class="st off">已離職</span>' : '') + '</div>' +
-        '<div class="bgrid">' +
-          '<div class="bx"><div class="k">特休剩餘（合計）</div><div class="v">' + (r.b.annualRemaining || 0) + '</div></div>' +
-          '<div class="bx"><div class="k">補休剩餘</div><div class="v">' + (r.b.compRemaining || 0) + '</div></div>' +
-          '<div class="bx"><div class="k">└ 去年遞延（先扣）</div><div class="v" style="color:var(--warn)">' + (r.b.annualCarry || 0) + '</div></div>' +
-          '<div class="bx"><div class="k">└ 今年新給</div><div class="v">' + (r.b.annualCurrent || 0) + '</div></div>' +
-          '<div class="bx"><div class="k">今年已用特休</div><div class="v">' + (r.b.annualUsedYTD || 0) + '</div></div>' +
-          '<div class="bx"><div class="k">今年已用補休</div><div class="v">' + (r.b.compUsedYTD || 0) + '</div></div>' +
-        '</div></div>';
+/* 點數字直接改（學遊戲後台那套） */
+function bindBoxes(){
+  Array.prototype.forEach.call(document.querySelectorAll('.bx[data-k]'), function(bx){
+    bx.onclick = function(){
+      if(bx.querySelector('.editrow')) return;
+      var cur = bx.querySelector('.v').textContent;
+      var row = document.createElement('div'); row.className = 'editrow';
+      var inp = document.createElement('input');
+      inp.type = 'number'; inp.step = '0.5'; inp.value = cur;
+      var ok = document.createElement('button');
+      ok.className = 'btn sm'; ok.textContent = '設為';
+      row.appendChild(inp); row.appendChild(ok);
+      bx.appendChild(row);
+      inp.focus(); inp.select();
+      ok.onclick = function(ev){
+        ev.stopPropagation();
+        var v = parseFloat(inp.value);
+        if(isNaN(v)) return toast('請填數字','error');
+        setField(bx.dataset.em, bx.dataset.k, roundHalf(v));
+      };
+      inp.onclick = function(ev){ ev.stopPropagation(); };
+      inp.addEventListener('keydown', function(ev){ if(ev.key==='Enter') ok.click(); });
+    };
+  });
+}
+function setField(email, key, val){
+  var b = S.bals[email] || {};
+  var patch = {}; patch[key] = val; patch.updatedAt = T.serverTimestamp();
+  if(key === 'annualCarry' || key === 'annualCurrent'){
+    var carry = key === 'annualCarry'   ? val : (b.annualCarry   || 0);
+    var cur   = key === 'annualCurrent' ? val : (b.annualCurrent || 0);
+    patch.annualRemaining = roundHalf(carry + cur);
+    if(key === 'annualCarry' && val > 0 && !b.annualCarryExpire)
+      patch.annualCarryExpire = T.Timestamp.fromDate(new Date(new Date().getFullYear() + '-12-31T23:59:59'));
+  }
+  T.setMerge(T.COL.balances, email, patch)
+   .then(function(){ return T.writeAudit('balance.edit', email,
+      { key:key, from:(b[key] || 0) }, { key:key, to:val }); })
+   .then(function(){ toast('已更新','success'); loadAccounts(); })
+   .catch(function(e){ toast(e.message,'error'); });
+}
+
+function doRename(a){
+  var n = prompt('修改姓名', a.name || '');
+  if(n === null) return;
+  n = n.trim();
+  if(!n) return toast('姓名不能空白','error');
+  T.upsertAccount(a.email, { name:n })
+   .then(function(){ return T.writeAudit('account.rename', a.email, { name:a.name }, { name:n }); })
+   .then(function(){ toast('已改為 ' + n,'success'); loadAccounts(); })
+   .catch(function(e){ toast(e.message,'error'); });
+}
+function doResetPw(a){
+  if(!confirm('把「' + (a.name || a.email) + '」的密碼重設為 ' + T.DEFAULT_PW + '？')) return;
+  T.resetPassword(a.email)
+   .then(function(pw){ alert('密碼已重設為：' + pw + '\n\n請通知她登入後自行修改。'); })
+   .catch(function(e){ toast(e.message,'error'); });
+}
+function doHire(a){
+  var cur = a.hireDate ? T.fmtDate(a.hireDate).replace(/\//g,'-') : '';
+  var v = prompt('到職日（格式 2024-03-01）', cur);
+  if(v === null) return;
+  var d = v.trim() ? new Date(v.trim() + 'T00:00:00') : null;
+  if(v.trim() && isNaN(d)) return toast('日期格式不對','error');
+  T.upsertAccount(a.email, { hireDate: d ? T.Timestamp.fromDate(d) : null })
+   .then(function(){ toast('已更新到職日','success'); loadAccounts(); })
+   .catch(function(e){ toast(e.message,'error'); });
+}
+function doHandover(a){
+  var lv = (a._lv || []).length, ot = (a._ot || []).length;
+  if(!confirm('「' + a.email + '」換人接手？\n\n' +
+    '現任：' + (a.name || '未設定') + '\n' +
+    '這個信箱目前有 ' + lv + ' 筆假單、' + ot + ' 筆加班單。\n\n' +
+    '執行後：時數全部歸零、密碼回到 ' + T.DEFAULT_PW + '。\n' +
+    '舊紀錄新秘書看不到，但後台的「完整紀錄」查得到。')) return;
+  var n = prompt('新任秘書的中文姓名');
+  if(n === null || !n.trim()) return;
+  var h = prompt('新任秘書的到職日（格式 2026-09-01，可留空）', '');
+  if(h === null) return;
+  var d = h.trim() ? new Date(h.trim() + 'T00:00:00') : null;
+  T.handoverAccount(a.email, n.trim(), d)
+   .then(function(r){
+     alert('已完成換人\n\n姓名：' + n.trim() + '\n任期：第 ' + r.term + ' 任\n密碼：' + r.password);
+     loadAccounts();
+   })
+   .catch(function(e){ toast(e.message,'error'); });
+}
+
+/* ---------- 完整紀錄 ---------- */
+function fillWhoFilter(){
+  var cur = el('#fWho').value;
+  el('#fWho').innerHTML = '<option value="">全部人員</option>' +
+    S.accounts.map(function(a){
+      return '<option value="' + esc(a.email) + '">' + esc(a.name || a.email) + '</option>';
     }).join('');
+  el('#fWho').value = cur;
+}
+el('#fRange').onchange = function(){
+  el('#customRange').classList.toggle('hide', el('#fRange').value !== 'custom');
+  if(el('#fRange').value !== 'custom') loadLog();
+};
+['#fWho','#fKind','#fStat','#fFrom','#fTo'].forEach(function(i){ el(i).onchange = loadLog; });
+
+function rangeOf(v){
+  var y = new Date().getFullYear(), m = new Date().getMonth();
+  if(v === 'm')  return { from:new Date(y, m, 1), to:new Date(y, m+1, 0) };
+  if(v === 'y')  return { from:new Date(y, 0, 1), to:new Date(y, 11, 31) };
+  if(v === 'ly') return { from:new Date(y-1, 0, 1), to:new Date(y-1, 11, 31) };
+  if(v === 'custom') return {
+    from: el('#fFrom').value ? new Date(el('#fFrom').value + 'T00:00:00') : null,
+    to:   el('#fTo').value   ? new Date(el('#fTo').value + 'T00:00:00')   : null };
+  return { from:null, to:null };
+}
+
+function loadLog(){
+  var r = rangeOf(el('#fRange').value);
+  el('#logList').innerHTML = '<div class="empty">載入中…</div>';
+  T.fetchAllRecords({
+    email: el('#fWho').value || null,
+    kind:  el('#fKind').value || null,
+    status:el('#fStat').value || null,
+    from: r.from, to: r.to
+  }).then(function(list){
+    el('#logCnt').textContent = list.length + ' 筆';
+    var box = el('#logList');
+    if(!list.length){ box.innerHTML = '<div class="empty">這個範圍沒有紀錄。</div>'; return; }
+    box.innerHTML = list.map(logCard).join('');
+  }).catch(function(e){
+    el('#logList').innerHTML = '<div class="empty">載入失敗：' + esc(e.message) + '</div>';
   });
 }
 
-el('#gB').onclick = function(){
-  var uid = el('#gU').value, hrs = parseFloat(el('#gH').value), exp = el('#gE').value;
-  if(!uid) return toast('請選對象','error');
-  if(isNaN(hrs)) return toast('請填明年要給幾小時','error');
-  if(!confirm('確定執行？今年沒休完的會轉成遞延，這個動作會改動餘額。')) return;
-  var b = el('#gB'); b.disabled = true; b.textContent = '執行中…';
-  T.grantAnnualYear(uid, hrs, exp ? new Date(exp + 'T00:00:00') : null).then(function(r){
-    var out = el('#gOut'); out.classList.remove('hide');
-    out.innerHTML = '今年沒休完的 <b>' + r.carried + '</b> 小時已轉成遞延。' +
-      (r.mustPayHours > 0
-        ? '<br><span style="color:var(--warn)">注意：上一批遞延還有 <b>' + r.mustPayHours +
-          '</b> 小時沒休完，依勞基法應折發工資。</span>'
-        : '<br>沒有需要折發工資的時數。');
-    toast('年度換算完成','success'); renderBal();
-  }).catch(function(e){ toast(e.message,'error'); })
-    .then(function(){ b.disabled = false; b.textContent = '執行年度換算'; });
-};
-
-el('#aB').onclick = function(){
-  var uid = el('#aU').value, kind = el('#aK').value;
-  var val = parseFloat(el('#aV').value), note = el('#aN').value.trim();
-  if(!uid) return toast('請選對象','error');
-  if(isNaN(val)) return toast('請填時數','error');
-  if(!note) return toast('請填調整原因','error');
-  var b = el('#aB'); b.disabled = true; b.textContent = '套用中…';
-  T.getBalance(uid).then(function(before){
-    var patch = {}; patch[kind] = roundHalf(val); patch.updatedAt = T.serverTimestamp();
-    if(kind === 'annualCarry' || kind === 'annualCurrent'){
-      var carry   = kind === 'annualCarry'   ? roundHalf(val) : (before.annualCarry   || 0);
-      var current = kind === 'annualCurrent' ? roundHalf(val) : (before.annualCurrent || 0);
-      patch.annualRemaining = roundHalf(carry + current);
-    }
-    return T.setMerge(T.COL.balances, uid, patch).then(function(){
-      var bf = {}; bf[kind] = before[kind] || 0;
-      var af = {}; af[kind] = roundHalf(val); af.note = note;
-      return T.writeAudit('balance.adjust', uid, bf, af);
-    });
-  }).then(function(){
-    toast('已套用','success'); el('#aV').value=''; el('#aN').value=''; renderBal();
-  }).catch(function(e){ toast(e.message,'error'); })
-    .then(function(){ b.disabled=false; b.textContent='套用'; });
-};
+function logCard(r){
+  var isLeave = r.kind === 'leave';
+  var label = isLeave
+    ? ((r.type==='other' && r.otherType) ? r.otherType : T.leaveTypeLabel(r.type))
+    : '加班';
+  var when = isLeave
+    ? T.fmtDateTime(r.startAt) + ' → ' + T.fmtDateTime(r.endAt)
+    : T.fmtDate(r.date) + '　' + T.fmtTime(r.startAt) + ' – ' + T.fmtTime(r.endAt);
+  var h = '<div class="rec"><div class="itop">' +
+    '<span class="inm">' + esc(r.name) + '</span>' +
+    (r.term > 1 ? '<span class="termtag">第 ' + r.term + ' 任</span>' : '') +
+    '<span class="ity">' + esc(label) + '</span>' +
+    '<span class="tag ' + r.status + '">' + T.STATUS_LABEL[r.status] + '</span>' +
+    '<span class="ih">' + r.hours + ' 小時</span></div>' +
+    '<div class="im">' + when + '</div>';
+  if(!isLeave && r.bonusHours > 0) h += '<div class="inn">核派增額 +' + r.bonusHours + ' 小時</div>';
+  if(r.reason) h += '<div class="inn">事由：' + esc(r.reason) + '</div>';
+  h += '<div class="trail">送出　<b>' + T.fmtStamp(r.createdAt) + '</b>　' + esc(r.name);
+  if(r.status === 'approved' || r.status === 'rejected')
+    h += '<br>' + (r.status === 'approved' ? '同意' : '駁回') + '　<b>' +
+      T.fmtStamp(r.reviewedAt) + '</b>　' + esc(r.reviewedBy || '');
+  if(r.status === 'cancelled')
+    h += '<br>撤銷　<b>' + T.fmtStamp(r.cancelledAt) + '</b>　' + esc(r.cancelledBy || '');
+  if(r.status === 'pending') h += '<br>尚未審核';
+  if(r.adminNote) h += '<br>註記：' + esc(r.adminNote);
+  return h + '</div></div>';
+}
 
 </script>
 </body>
