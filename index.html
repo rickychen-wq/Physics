@@ -199,6 +199,20 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
   font-size:12px;color:var(--dim2);line-height:1.8}
 .trail b{font-family:var(--mono);color:var(--dim)}
 
+/* ===== 通知 ===== */
+.noti{padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;gap:11px}
+.noti:last-child{border-bottom:none}
+.noti .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);flex:none;margin-top:7px;
+  box-shadow:0 0 10px rgba(217,169,60,.7)}
+.noti.read .dot{background:rgba(255,255,255,.12);box-shadow:none}
+.noti .t{font-weight:700;font-size:14.5px;margin-bottom:3px}
+.noti .b{font-size:13px;color:var(--dim);line-height:1.7}
+.noti .w{font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:6px}
+.tabbar button .nb{position:absolute;top:4px;right:calc(50% - 20px);min-width:16px;height:16px;
+  border-radius:9px;background:var(--bad);color:#fff;font-size:10px;font-weight:700;
+  display:grid;place-items:center;padding:0 4px;font-family:var(--mono)}
+.tabbar button{position:relative}
+
 /* ===== 設定 ===== */
 .kv{display:flex;align-items:baseline;gap:12px;padding:10px 0;
   border-bottom:1px solid rgba(255,255,255,.05);font-size:13.5px}
@@ -259,7 +273,7 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
         <div class="bcell">
           <div class="k">加班補休剩餘</div>
           <div class="v num"><span id="cmpV">0</span><small>小時</small></div>
-          <div class="bar"><i id="cmpB"></i></div>
+          <div class="bar"><i id="cmpB"></i><b id="cmpC"></b></div>
         </div>
       </div>
       <div class="carry hide" id="carryNote"></div>
@@ -323,7 +337,10 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
           <div class="after" id="ocalcAfter"></div>
         </div>
         <div class="field"><label class="lb" for="orsn">加班事由</label>
-          <textarea id="orsn" placeholder="處理什麼工作"></textarea></div>
+          <textarea id="orsn" placeholder="處理什麼工作。如果是週末的會議或活動，請寫清楚，秘書長會判斷是否為核派加班"></textarea>
+          <div class="hint">加班至少 1 小時（第一小時以整數計，之後以 0.5 計）。<br>
+            工作日一天最多 4 小時，一個月總計不超過 46 小時。<br>
+            核派加班補休加倍，由秘書長審核時認定。</div></div>
         <button class="btn" id="subO">送出加班單</button>
       </div>
     </section>
@@ -344,10 +361,12 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 
   <!-- 通知（保留） -->
   <section id="pNoti" class="hide">
-    <div class="card"><div class="empty">
-      <div style="font-size:34px;margin-bottom:12px">🔔</div>
-      通知功能還沒開放<br>
-      <span style="font-size:12.5px">之後會在假單被同意或駁回時推播到手機</span>
+    <div class="card">
+      <div class="chd"><h2>通知</h2><span class="unit" id="notiCnt"></span></div>
+      <div id="notiList"><div class="empty">目前沒有通知。</div></div>
+    </div>
+    <div class="card"><div class="cbd" style="padding:14px 16px">
+      <div class="hint" style="margin:0">手機推播還在做，目前通知只會出現在這一頁。</div>
     </div></div>
   </section>
 
@@ -410,7 +429,7 @@ var T = window.TPS, el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.round
 T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'error'); });
 
 var S = { page:'Home', tab:'leave', type:'annual', recKind:'all',
-          bal:{}, peak:{a:1,c:1}, unsub:[], busy:false, leaves:[], ots:[] };
+          bal:{}, peak:{a:1,c:1}, unsub:[], busy:false, leaves:[], ots:[], notis:[] };
 var THIS_MONTH = (function(){ var d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); })();
 
@@ -467,6 +486,24 @@ function enter(u){
   }));
   S.unsub.push(T.watchMyLeaves(function(l){ S.leaves = l; paintMonth(); renderRecs(); }));
   S.unsub.push(T.watchMyOvertime(function(l){ S.ots = l; paintMonth(); renderRecs(); }));
+  S.unsub.push(T.watchMyNotices(function(l){ S.notis = l; renderNotis(); }));
+}
+
+/* ---------- 通知 ---------- */
+function renderNotis(){
+  var unread = S.notis.filter(function(n){ return !n.read; }).length;
+  var tb = document.querySelector('.tabbar button[data-p="Noti"]');
+  var old = tb.querySelector('.nb'); if(old) old.remove();
+  if(unread){ var s2=document.createElement('span'); s2.className='nb'; s2.textContent=unread; tb.appendChild(s2); }
+  el('#notiCnt').textContent = S.notis.length ? S.notis.length + ' 則' : '';
+  var box = el('#notiList');
+  if(!S.notis.length){ box.innerHTML = '<div class="empty">目前沒有通知。</div>'; return; }
+  box.innerHTML = S.notis.map(function(n){
+    return '<div class="noti' + (n.read ? ' read' : '') + '"><div class="dot"></div><div>' +
+      '<div class="t">' + esc(n.title) + '</div>' +
+      '<div class="b">' + esc(n.body) + '</div>' +
+      '<div class="w">' + T.fmtStamp(n.createdAt) + '</div></div></div>';
+  }).join('');
 }
 
 /* ---------- 分頁 ---------- */
@@ -478,22 +515,28 @@ Array.prototype.forEach.call(document.querySelectorAll('.tabbar button'), functi
     ['Home','Rec','Noti','Set'].forEach(function(p){
       el('#p'+p).classList.toggle('hide', p !== S.page); });
     window.scrollTo(0,0);
+    if(S.page === 'Noti') setTimeout(function(){ T.markAllNoticesRead(S.notis); }, 1200);
   };
 });
 
 /* ---------- 時數顯示 ---------- */
 function paintBal(){
-  var a = S.bal.annualRemaining || 0, c = S.bal.compRemaining || 0, cy = S.bal.annualCarry || 0;
+  var a = S.bal.annualRemaining || 0, c = S.bal.compRemaining || 0;
+  var ac = S.bal.annualCarry || 0, cc = S.bal.compCarry || 0;
   el('#annV').textContent = a; el('#cmpV').textContent = c;
   el('#annB').style.width = Math.min(100, a / S.peak.a * 100) + '%';
-  el('#annC').style.width = Math.min(100, cy / S.peak.a * 100) + '%';
+  el('#annC').style.width = Math.min(100, ac / S.peak.a * 100) + '%';
   el('#cmpB').style.width = Math.min(100, c / S.peak.c * 100) + '%';
-  var n = el('#carryNote');
-  if(cy > 0){
-    var exp = S.bal.annualCarryExpire ? T.fmtDate(S.bal.annualCarryExpire) : '今年底';
+  el('#cmpC').style.width = Math.min(100, cc / S.peak.c * 100) + '%';
+  var n = el('#carryNote'), lines = [];
+  if(ac > 0) lines.push('特休有 <b>' + ac + '</b> 小時是去年遞延的，' +
+    (S.bal.annualCarryExpire ? T.fmtDate(S.bal.annualCarryExpire) : '今年底') + ' 到期');
+  if(cc > 0) lines.push('補休有 <b>' + cc + '</b> 小時是去年遞延的，' +
+    (S.bal.compCarryExpire ? T.fmtDate(S.bal.compCarryExpire) : '今年底') + ' 到期');
+  if(lines.length){
     n.classList.remove('hide');
-    n.innerHTML = '斜紋那段 <b>' + cy + '</b> 小時是去年遞延的，請假會優先扣這段。' +
-      '<br>' + exp + ' 之後就會消失，記得先用掉。';
+    n.innerHTML = '斜紋那段是遞延的，請假會優先扣。<br>' + lines.join('<br>') +
+      '<br>到期沒用完會依規定折算薪資。';
   } else n.classList.add('hide');
   paintCalc();
 }
@@ -555,11 +598,12 @@ function paintCalc(){
     if(left < 0){
       box.innerHTML = '<span style="color:var(--bad)">' + label + '不夠，目前只剩 <b>' +
         (S.bal[key] || 0) + '</b> 小時</span>';
-    } else if(def.deducts === 'annual' && (S.bal.annualCarry || 0) > 0){
-      var sp = T.splitAnnual(S.bal, calcL);
+    } else if((def.deducts === 'annual' && (S.bal.annualCarry || 0) > 0) ||
+              (def.deducts === 'comp'   && (S.bal.compCarry   || 0) > 0)){
+      var sp = T.splitPool(S.bal, calcL, def.deducts);
       box.innerHTML = '會先扣去年遞延的 <b>' + sp.fromCarry + '</b> 小時' +
         (sp.fromCurrent > 0 ? '，再扣今年的 <b>' + sp.fromCurrent + '</b> 小時' : '') +
-        '<br>核准後特休剩下 <b>' + left + '</b> 小時';
+        '<br>核准後' + label + '剩下 <b>' + left + '</b> 小時';
     } else {
       box.innerHTML = '核准後' + label + '剩下 <b>' + left + '</b> 小時';
     }
@@ -605,11 +649,15 @@ el('#subO').onclick = function(){
   var d = el('#od').value;
   if(!d) return showErr('oErr','請選加班日期。');
   if(!calcO) return showErr('oErr','結束時間要晚於開始時間。');
+  var bad = T.validateOvertime(calcO, new Date(d+'T00:00:00'), 0);
+  if(bad) return showErr('oErr', bad);
   var b = el('#subO'); S.busy = true; b.disabled = true; b.textContent = '送出中…';
   T.submitOvertime({ date:new Date(d+'T00:00:00'), startAt:dt(d, el('#os').value),
     endAt:dt(d, el('#oe').value), hours:calcO, reason:el('#orsn').value })
    .then(function(r){
-     toast(r.overCapWarning ? '已送出，本月超過 46 小時已標記提醒' : '加班單已送出，等秘書長審核','success');
+     toast(r.overCapWarning
+       ? '已送出。本月加班已達 ' + r.monthlyUsed + ' 小時，超過 46 小時上限，已標記提醒秘書長'
+       : '加班單已送出，等秘書長審核','success');
      el('#orsn').value = '';
    })
    .catch(function(err){ showErr('oErr', err.message); })
@@ -661,8 +709,9 @@ function recCard(r){
   if(isLeave && r.segments && r.segments.length > 1)
     h += '<div class="rw">跨月：' + r.segments.map(function(s){
       return s.ym + ' ' + s.hours + 'h'; }).join('、') + '</div>';
-  if(!isLeave && r.bonusHours > 0)
-    h += '<div class="rw">核派增額 +' + r.bonusHours + ' 小時</div>';
+  if(!isLeave && r.isDispatch)
+    h += '<div class="rw">核派加班，補休加倍 → 實得 ' +
+         roundHalf(r.hours + (r.bonusHours || 0)) + ' 小時</div>';
 
   var trail = '<div class="trail">送出　<b>' + T.fmtStamp(r.createdAt) + '</b>';
   if(r.status === 'approved' || r.status === 'rejected')
