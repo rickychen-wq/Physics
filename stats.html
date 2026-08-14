@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0A0D14">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <title>請假狀況檢視 — 台灣物理學會行政室</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -251,7 +253,9 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
   <button data-p="Cal" aria-selected="true">請假月曆</button>
   <button data-p="Sum" aria-selected="false" class="lv2 hide">年度總表</button>
   <button data-p="Bal" aria-selected="false" class="lv2 hide">目前時數</button>
+  <button data-p="Ot" aria-selected="false" class="lv2 hide">加班</button>
   <button data-p="Det" aria-selected="false" class="lv2 hide">明細</button>
+  <button data-p="Noti" aria-selected="false">通知</button>
 </div>
 
 <main>
@@ -316,6 +320,34 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
     </div>
   </div>
 
+  <!-- 加班 -->
+  <div id="pOt" class="hide">
+    <div class="card">
+      <div class="chd"><h2>加班紀錄</h2>
+        <div class="sp"><select id="otWho"><option value="">全部人員</option></select>
+          <select id="otRange"><option value="m">本月</option>
+            <option value="y" selected>今年</option><option value="all">全部</option></select></div>
+        <div class="note">核派加班的補休是加倍計算的。加班事由完整列出。</div>
+      </div>
+      <div id="otList"><div class="empty">載入中…</div></div>
+    </div>
+  </div>
+
+  <!-- 通知 -->
+  <div id="pNoti">
+    <div class="card">
+      <div class="chd"><h2>通知設定</h2></div>
+      <div class="cbd">
+        <div id="notiState" class="info"></div>
+        <button class="btn" id="notiBtn" style="width:auto;padding:12px 24px">開啟通知</button>
+        <div class="note" style="margin-top:14px">
+          手機推播還在開發中，開啟後之後上線就會直接收到。<br>
+          如果學會更換了檢視密碼，通知會自動關閉，要重新輸入新密碼才會恢復。
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="pDet" class="hide">
     <div class="card">
       <div class="filters">
@@ -330,6 +362,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
           <option value="ly">去年</option><option value="all">全部</option></select>
       </div>
       <div class="chd" style="border-top:none"><h2>明細</h2><span class="unit" id="detCnt">—</span>
+        <div class="sp"><button class="btn" id="expBtn" style="width:auto;padding:10px 20px">匯出 Excel</button></div>
         <div class="note">可以直接修改或刪除。改動時數或狀態時，系統會自動把餘額調整正確。</div>
       </div>
       <div id="detList"><div class="empty">載入中…</div></div>
@@ -338,6 +371,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 </main>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="shared.js"></script>
@@ -353,11 +387,16 @@ if(!window.TPS){
     'onclick="location.reload(true)">重新載入</button></div>';
   throw new Error('shared.js 未載入');
 }
+/* 後台密鑰：Firestore 規則會檢查這把鑰匙。
+   換鑰匙時，admin.html、stats.html、firestore.rules 三邊要同時改。 */
+var T_KEY = 'tps-admin-8f3a2c91e7';
+window.TPS.setAdminKey(T_KEY);
+
 var T = window.TPS, el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.roundHalf;
 T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'error'); });
 
 var LV2_KEY = 'tps.stats.lv2';
-var S = { page:'Cal', lv2:false, y:new Date().getFullYear(), m:new Date().getMonth(),
+var S = { page:'Cal', lv2:false, statsPw:'physics', statsEpoch:0, y:new Date().getFullYear(), m:new Date().getMonth(),
           accounts:[], leaves:[], ots:[], loaded:false };
 
 function showErr(id,msg){ var b=el('#'+id);
@@ -367,20 +406,22 @@ function showErr(id,msg){ var b=el('#'+id);
 el('#gBtn').onclick = function(){
   showErr('gErr','');
   var pw = el('#gPw').value;
-  if(pw !== 'physics'){
-    // 直接輸入第二層密碼也能進，一次到位
+  var b = el('#gBtn'); b.disabled = true; b.textContent = '確認中…';
+  T.getStatsPassword().then(function(c){
+    S.statsPw = c.pw; S.statsEpoch = c.epoch;
+    if(pw === c.pw){ enter(); return; }
     if(pw === T.ADMIN_PASSWORD){ unlock(true); enter(); return; }
-    return showErr('gErr','密碼不正確。');
-  }
-  enter();
+    showErr('gErr','密碼不正確。');
+  }).catch(function(){ showErr('gErr','連線失敗，請再試一次。'); })
+    .then(function(){ b.disabled = false; b.textContent = '進入'; });
 };
 el('#gPw').addEventListener('keydown', function(e){ if(e.key==='Enter') el('#gBtn').click(); });
 
 function enter(){
-  T.viewerLogin ? null : null;
   el('#gate').classList.add('hide');
   el('#app').classList.remove('hide');
-  try { if(localStorage.getItem(LV2_KEY) === '1') unlock(true); } catch(e){}
+  try { if(localStorage.getItem(LV2_KEY) === '1') unlock(true); }
+  catch(e){ console.warn('[stats] 讀取解鎖狀態失敗', e); }
   loadAll();
 }
 
@@ -393,7 +434,8 @@ function unlock(on){
   Array.prototype.forEach.call(document.querySelectorAll('.lv2'), function(b){
     b.classList.toggle('hide', !on);
   });
-  try { on ? localStorage.setItem(LV2_KEY,'1') : localStorage.removeItem(LV2_KEY); } catch(e){}
+  try { on ? localStorage.setItem(LV2_KEY,'1') : localStorage.removeItem(LV2_KEY); }
+  catch(e){ console.warn('[stats] 寫入解鎖狀態失敗', e); }
   if(!on && S.page !== 'Cal') go('Cal');
   if(on) T.adminLogin(T.ADMIN_PASSWORD);   // 解鎖後才有修改權限
   else T.adminLogout();
@@ -417,13 +459,15 @@ function go(p){
   Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function(b){
     b.setAttribute('aria-selected', b.dataset.p === p);
   });
-  ['Cal','Sum','Bal','Det'].forEach(function(x){
+  ['Cal','Sum','Bal','Ot','Det','Noti'].forEach(function(x){
     el('#p'+x).classList.toggle('hide', x !== p);
   });
   window.scrollTo(0,0);
   if(p === 'Sum') renderSummary();
   if(p === 'Bal') renderBalances();
   if(p === 'Det') renderDetail();
+  if(p === 'Ot') renderOt();
+  if(p === 'Noti') renderNoti();
 }
 Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function(b){
   b.onclick = function(){ go(b.dataset.p); };
@@ -443,6 +487,7 @@ function loadAll(){
     var opts = '<option value="">全部人員</option>' + S.accounts.map(function(a){
       return '<option value="' + esc(a.email) + '">' + esc(a.name || a.email) + '</option>'; }).join('');
     el('#fWho').innerHTML = opts;
+    el('#otWho').innerHTML = opts;
     var yrs = {}; S.leaves.concat(S.ots).forEach(function(x){
       var d = T.toDate(x.startAt || x.date); if(!isNaN(d)) yrs[d.getFullYear()] = 1; });
     yrs[new Date().getFullYear()] = 1;
@@ -821,6 +866,199 @@ function editPanel(x, host){
   foot.appendChild(save); foot.appendChild(cancel);
   w.appendChild(foot);
   return w;
+}
+
+
+/* ---------- 加班分頁 ---------- */
+['#otWho','#otRange'].forEach(function(i){ el(i).onchange = renderOt; });
+function renderOt(){
+  var r = rangeOf(el('#otRange').value);
+  var who = el('#otWho').value;
+  var list = S.ots.filter(function(x){
+    if(who && x.email !== who) return false;
+    var d = T.toDate(x.date);
+    if(r.from && d < r.from) return false;
+    if(r.to && d > r.to) return false;
+    return true;
+  }).sort(function(a,b){ return T.toDate(b.date) - T.toDate(a.date); });
+
+  var box = el('#otList');
+  if(!list.length){ box.innerHTML = '<div class="empty">這個範圍沒有加班紀錄。</div>'; return; }
+  var sum = 0, dispatchN = 0;
+  list.forEach(function(x){
+    if(x.status === 'approved') sum = roundHalf(sum + x.hours + (x.bonusHours||0));
+    if(x.isDispatch) dispatchN++;
+  });
+  var head = '<div class="appl" style="background:rgba(255,255,255,.02)">' +
+    '<span class="who">合計</span>' +
+    '<span class="rng">已核准 ' + sum + ' 小時　核派 ' + dispatchN + ' 筆　共 ' + list.length + ' 筆</span></div>';
+  box.innerHTML = head + list.map(function(x){
+    var h = '<div class="rec"><div class="rtop"><span class="nm">' + esc(x.name) + '</span>' +
+      (x.isDispatch ? '<span class="termtag" style="background:rgba(217,169,60,.18);color:var(--gold-b)">核派加班</span>' : '') +
+      '<span class="tag ' + x.status + '">' + T.STATUS_LABEL[x.status] + '</span>' +
+      '<span class="hr">' + x.hours + ' 小時' +
+      (x.bonusHours > 0 ? ' → ' + roundHalf(x.hours + x.bonusHours) : '') + '</span></div>' +
+      '<div class="rmeta">' + T.fmtDate(x.date) + '　' +
+        T.fmtTime(x.startAt) + ' – ' + T.fmtTime(x.endAt) +
+        (x.isWeekend ? '　（假日）' : '') + '</div>';
+    h += '<div class="rmeta" style="color:var(--txt);margin-top:6px">事由：' +
+      esc(x.reason || '（未填）') + '</div>';
+    h += '<div class="rtrail">送出　<b>' + T.fmtStamp(x.createdAt) + '</b>';
+    if(x.status==='approved'||x.status==='rejected')
+      h += '<br>' + (x.status==='approved'?'同意':'駁回') + '　<b>' + T.fmtStamp(x.reviewedAt) +
+           '</b>　' + esc(x.reviewedBy||'');
+    if(x.adminNote) h += '<br>註記：' + esc(x.adminNote);
+    return h + '</div></div>';
+  }).join('');
+}
+
+/* ---------- 通知設定 ---------- */
+var NOTI_KEY = 'tps.stats.noti';
+function notiState(){
+  try {
+    var v = localStorage.getItem(NOTI_KEY);
+    if(!v) return { on:false };
+    var o = JSON.parse(v);
+    if(o.epoch !== S.statsEpoch) return { on:false, stale:true };
+    return { on:true };
+  } catch(e){ console.warn('[stats] 讀取通知狀態失敗', e); return { on:false }; }
+}
+function renderNoti(){
+  var st = notiState();
+  var box = el('#notiState');
+  if(st.on){
+    box.innerHTML = '這台裝置的通知是<b>開啟</b>的。';
+    box.style.color = 'var(--ok)';
+    el('#notiBtn').textContent = '關閉通知';
+  } else if(st.stale){
+    box.innerHTML = '學會更換過檢視密碼，這台裝置的通知<b>已被關閉</b>。<br>請輸入新密碼重新開啟。';
+    box.style.color = 'var(--warn)';
+    el('#notiBtn').textContent = '輸入新密碼重新開啟';
+  } else {
+    box.innerHTML = '這台裝置目前<b>沒有</b>開啟通知。';
+    box.style.color = 'var(--dim)';
+    el('#notiBtn').textContent = '開啟通知';
+  }
+}
+el('#notiBtn').onclick = function(){
+  var st = notiState();
+  if(st.on){
+    try { localStorage.removeItem(NOTI_KEY); } catch(e){ console.warn('[stats]', e); }
+    T.unsubscribePush().then(function(){ toast('已關閉通知','success'); renderNoti(); });
+    return;
+  }
+  var pw = prompt('請輸入目前的檢視密碼以開啟通知');
+  if(pw === null) return;
+  T.getStatsPassword().then(function(c){
+    S.statsPw = c.pw; S.statsEpoch = c.epoch;
+    if(pw !== c.pw) return toast('密碼不正確','error');
+    try { localStorage.setItem(NOTI_KEY, JSON.stringify({ epoch:c.epoch, at:Date.now() })); }
+    catch(e){ console.warn('[stats]', e); }
+    T.subscribePush('stats','檢視者').then(function(){
+      toast('已開啟通知','success');
+      return T.sendPush('stats','通知已開啟 🔔','之後學會有請假申請就會通知你。','stats.html','test');
+    }).catch(function(e){ toast(e.message,'error'); })
+      .then(renderNoti);
+  });
+};
+
+/* ---------- 匯出 Excel（需第二層） ---------- */
+el('#expBtn').onclick = function(){
+  if(!S.lv2) return toast('請先解鎖完整資料','error');
+  var b = el('#expBtn'); b.disabled = true; b.textContent = '產生中…';
+  /* 先重新抓一次，避免匯出到開頁當下的舊資料 */
+  loadAll().then(function(){ return T.listDeleted(); }).then(function(del){
+    var wb = XLSX.utils.book_new();
+    var nameOf = {};
+    S.accounts.forEach(function(a){ nameOf[a.email] = a.name || a.email; });
+
+    /* 請假 */
+    var lv = S.leaves.map(function(x){ return leaveRow(x, ''); });
+    /* 加班 */
+    var ot = S.ots.map(function(x){ return otRow(x, ''); });
+    /* 已刪除的接在後面，最後一欄標注 */
+    del.forEach(function(x){
+      if(x.recordKind === 'overtime') ot.push(otRow(x, '已刪除 ' + T.fmtStamp(x.deletedAt) + '（' + (x.deletedBy||'') + '）'));
+      else lv.push(leaveRow(x, '已刪除 ' + T.fmtStamp(x.deletedAt) + '（' + (x.deletedBy||'') + '）'));
+    });
+    lv.sort(function(a,b){ return String(a['開始']).localeCompare(String(b['開始'])); });
+    ot.sort(function(a,b){ return String(a['日期']).localeCompare(String(b['日期'])); });
+
+    XLSX.utils.book_append_sheet(wb, sheet(lv, [12,10,14,8,18,18,8,10,10,10,20,22]), '請假紀錄');
+    XLSX.utils.book_append_sheet(wb, sheet(ot, [12,10,10,8,8,8,10,34,10,20,22]), '加班紀錄');
+
+    return Promise.all(S.accounts.map(function(a){
+      return T.getBalance(a.email).then(function(bal){
+        return { '姓名':nameOf[a.email], '信箱':a.email,
+          '特休·去年遞延':bal.annualCarry||0, '特休·今年':bal.annualCurrent||0,
+          '特休合計':bal.annualRemaining||0,
+          '補休·去年遞延':bal.compCarry||0, '補休·今年':bal.compCurrent||0,
+          '補休合計':bal.compRemaining||0,
+          '今年已用特休':bal.annualUsedYTD||0, '今年已用補休':bal.compUsedYTD||0 };
+      });
+    })).then(function(bals){
+      XLSX.utils.book_append_sheet(wb, sheet(bals, [12,26,14,12,10,14,12,10,12,12]), '目前時數');
+      var now = new Date();
+      return T.computeAllSalary(now.getFullYear(), now.getMonth());
+    }).then(function(pay){
+      var rows = pay.map(function(r){
+        return { '姓名':r.name, '年月':r.year + '/' + r.month, '時薪':r.rate,
+          '底薪':r.baseSalary, '事假時數':r.hours.personal, '事假扣款':r.deductPersonal,
+          '病假半薪時數':r.sickHalfHours, '病假半薪扣款':r.deductSickHalf,
+          '病假全扣時數':r.sickFullHours, '病假全扣扣款':r.deductSickFull,
+          '扣款合計':r.deductTotal, '實領':r.finalPay };
+      });
+      XLSX.utils.book_append_sheet(wb, sheet(rows, [12,10,8,10,10,10,12,12,12,12,10,10]), '本月薪資');
+      var stamp = new Date();
+      var fn = 'TPS請假加班紀錄_' + stamp.getFullYear() +
+        String(stamp.getMonth()+1).padStart(2,'0') + String(stamp.getDate()).padStart(2,'0') + '.xlsx';
+      XLSX.writeFile(wb, fn);
+      toast('已匯出 ' + fn, 'success');
+    });
+  }).catch(function(e){ toast('匯出失敗：' + e.message, 'error'); })
+    .then(function(){ b.disabled = false; b.textContent = '匯出 Excel'; });
+};
+
+function sheet(rows, widths){
+  var ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ '（無資料）':'' }]);
+  ws['!cols'] = (widths || []).map(function(w){ return { wch:w }; });
+  ws['!freeze'] = { xSplit:0, ySplit:1 };
+  return ws;
+}
+function leaveRow(x, mark){
+  return {
+    '姓名': x.name, '任期': x.term || 1,
+    '假別': (x.type==='other' && x.otherType) ? x.otherType : T.leaveTypeLabel(x.type),
+    '時數': x.hours,
+    '開始': T.fmtStamp(x.startAt), '結束': T.fmtStamp(x.endAt),
+    '扣特休': x.annualHours || 0, '扣補休': x.compHours || 0,
+    '分月計入': (x.segments||[]).map(function(s){ return s.ym + ' ' + s.hours + 'h'; }).join('、'),
+    '狀態': T.STATUS_LABEL[x.status] || x.status,
+    '職務代理人': x.needsProxy ? (x.proxyName || '') +
+      (x.proxyStatus==='accepted' ? '（已確認）' : x.proxyStatus==='declined' ? '（已駁回）' : '（待確認）') : '',
+    '事後補請': x.isLate ? ('是：' + (x.lateReason||'')) : '否',
+    '送出時間': T.fmtStamp(x.createdAt),
+    '審核時間': x.reviewedAt ? T.fmtStamp(x.reviewedAt) : '',
+    '審核人': x.reviewedBy || '', '註記': x.adminNote || '',
+    '備註': mark
+  };
+}
+function otRow(x, mark){
+  return {
+    '姓名': x.name, '任期': x.term || 1,
+    '日期': T.fmtDate(x.date),
+    '起': T.fmtTime(x.startAt), '迄': T.fmtTime(x.endAt),
+    '時數': x.hours, '核派加班': x.isDispatch ? '是' : '否',
+    '增額': x.bonusHours || 0,
+    '補休實得': roundHalf((x.hours||0) + (x.bonusHours||0)),
+    '假日': x.isWeekend ? '是' : '否',
+    '事由': x.reason || '',
+    '狀態': T.STATUS_LABEL[x.status] || x.status,
+    '送出時間': T.fmtStamp(x.createdAt),
+    '審核時間': x.reviewedAt ? T.fmtStamp(x.reviewedAt) : '',
+    '審核人': x.reviewedBy || '', '註記': x.adminNote || '',
+    '備註': mark
+  };
 }
 
 </script>
