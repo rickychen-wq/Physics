@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '6.4.0';
+var SHARED_VERSION = '6.5.0';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -832,6 +832,10 @@ function submitLeave(o) {
       pushNotice('admin', '有新的請假申請',
         u.name + ' 申請 ' + leaveTypeLabel(o.type) + ' ' + h + ' 小時（' +
         fmtDate(s) + '）', 'leave');
+      /* 檢視者只知道誰要請假、哪一天，不揭露假別與時數 */
+      pushNotice('stats', '有新的請假申請',
+        u.name + ' 申請請假 ' + fmtDate(s) +
+        (fmtDate(s) !== fmtDate(e) ? ' – ' + fmtDate(e) : ''), 'leave');
       if (needsProxy) {
         pushNotice(proxyEmail, '有一張假單需要你確認代理',
           u.name + ' 申請 ' + leaveTypeLabel(o.type) + ' ' + h + ' 小時（' +
@@ -955,6 +959,11 @@ function reviewLeave(leaveId, decision, adminNote) {
         leaveTypeLabel(L.type) + ' ' + L.hours + ' 小時（' + fmtDate(L.startAt) + '）' +
         (decision === STATUS.APPROVED ? ' 已核准。' : ' 沒有通過。') +
         (adminNote ? '　' + adminNote : ''), 'result');
+      pushNotice('stats',
+        decision === STATUS.APPROVED ? '請假已核准' : '請假被駁回',
+        L.name + ' ' + fmtDate(L.startAt) +
+        (fmtDate(L.startAt) !== fmtDate(L.endAt) ? ' – ' + fmtDate(L.endAt) : '') +
+        ' 的請假' + (decision === STATUS.APPROVED ? '已核准。' : '被駁回。'), 'result');
     });
   });
 }
@@ -1182,6 +1191,8 @@ function submitOvertime(o) {
       pushNotice('admin', '有新的加班申請',
         u.name + ' 申請加班 ' + h + ' 小時（' + fmtDate(o.date) + '）' +
         (over ? '　本月已超過 46 小時' : ''), 'overtime');
+      pushNotice('stats', '有新的加班申請',
+        u.name + ' 申請加班 ' + fmtDate(o.date), 'overtime');
       return { id: ref.id, overCapWarning: over, monthlyUsed: used + h };
     });
   });
@@ -1249,6 +1260,10 @@ function reviewOvertime(otId, decision, adminNote, opt) {
         (decision === STATUS.APPROVED
           ? '，補休增加 ' + roundHalf(O.hours + (O.bonusHours || 0)) + ' 小時。'
           : ' 沒有通過。') + (adminNote ? '　' + adminNote : ''), 'result');
+      pushNotice('stats',
+        decision === STATUS.APPROVED ? '加班已核准' : '加班被駁回',
+        O.name + ' ' + fmtDate(O.date) + ' 的加班' +
+        (decision === STATUS.APPROVED ? '已核准。' : '被駁回。'), 'result');
     });
   });
 }
@@ -1796,8 +1811,20 @@ function setStatsPassword(newPw) {
     return setMerge(COL.config, 'stats', {
       pw: p, epoch: (c.epoch || 0) + 1, changedAt: serverTimestamp()
     }).then(function () {
-      return writeAudit('config.statsPw', 'stats', { epoch: c.epoch }, { epoch: (c.epoch||0)+1 });
-    }).then(function () { return { epoch: (c.epoch || 0) + 1 }; });
+      /* 密碼換了就要真的把所有檢視者的推播訂閱刪掉，
+         不然畫面顯示「已關閉」但手機還是會繼續收到。 */
+      return getSubs('stats').then(function (subs) {
+        return Promise.all(subs.map(function (x) {
+          return db.collection(COL.push).doc(x.id).delete().catch(function(){});
+        })).then(function () { return subs.length; });
+      });
+    }).then(function (removed) {
+      return writeAudit('config.statsPw', 'stats', { epoch: c.epoch },
+        { epoch: (c.epoch||0)+1, removedSubs: removed })
+        .then(function () { return removed; });
+    }).then(function (removed) {
+      return { epoch: (c.epoch || 0) + 1, removedSubs: removed };
+    });
   });
 }
 
