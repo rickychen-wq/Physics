@@ -227,7 +227,23 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 .secline{padding:11px 17px;font-size:11.5px;color:var(--dim2);letter-spacing:.06em;
   background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.05)}
 
-/* ===== 薪資 ===== */
+/* ===== 本月統計 ===== */
+.mrow{padding:17px}
+.mrow{border-bottom:1px solid rgba(255,255,255,.05)}
+.mrow:last-child{border-bottom:none}
+.mhd{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-bottom:12px}
+.mhd b{font-size:16px}
+.mhd .tot{margin-left:auto;font-family:var(--mono);font-size:19px;font-weight:700;color:var(--gold-b)}
+.mtypes{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.mt{background:var(--bg);border-radius:10px;padding:11px 12px;box-shadow:0 0 0 1px rgba(255,255,255,.05)}
+.mt .k{font-size:11px;color:var(--dim);line-height:1.4}
+.mt .v{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--txt);line-height:1.5}
+.mt .v small{font-size:10px;color:var(--dim2);font-weight:400;margin-left:3px}
+.mt.z .v{color:var(--dim2)}
+.mnone{color:var(--dim2);font-size:13px}
+.note{font-size:12px;color:var(--dim2);width:100%;line-height:1.6}
+
+/* ===== 薪資（已停用） ===== */
 .pay{padding:17px;border-bottom:1px solid rgba(255,255,255,.05)}
 .pay:last-child{border-bottom:none}
 .payhd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
@@ -297,7 +313,7 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
   <button class="ditem" data-p="Log" aria-selected="false"><span>🗂️</span>完整紀錄</button>
   <button class="ditem" data-p="Cal" aria-selected="false"><span>📅</span>行事曆</button>
   <button class="ditem" data-p="Set" aria-selected="false"><span>💰</span>到期結算</button>
-  <button class="ditem" data-p="Pay" aria-selected="false"><span>🧾</span>薪資</button>
+  <button class="ditem" data-p="Pay" aria-selected="false"><span>🧾</span>本月統計</button>
   <button class="ditem" data-p="Sys" aria-selected="false"><span>🔑</span>系統設定</button>
   <div class="dsep"></div>
   <button class="ditem" id="dOut"><span>🚪</span>登出</button>
@@ -390,17 +406,21 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
       <div id="setList"><div class="empty">載入中…</div></div>
     </section>
   </div>
-  <!-- 薪資 -->
+  <!-- 本月統計 -->
   <div id="pPay" class="hide">
     <section class="card">
-      <div class="chd"><h2>月薪結算</h2>
+      <div class="chd"><h2>請假統計</h2>
         <div class="sp"><select id="payYear"></select><select id="payMonth"></select></div>
       </div>
       <div class="info" style="margin:14px 16px 0">
-        底薪 = 時薪 × 7 小時 × 23 天。事假扣全薪，病假一年 210 小時內扣半薪、超過扣全薪。<br>
-        特休、補休、生理假、家庭照顧假不扣薪。時薪可以在「帳號與時數」個別調整。
+        只計入已核准的假單，跨月的依工作日自動分月計入。<br>
+        這份給財務對薪水用，系統不代算金額。
       </div>
       <div id="payList"><div class="empty">載入中…</div></div>
+    </section>
+    <section class="card">
+      <div class="chd"><h2>加班統計</h2><div class="note">含核派加班加倍後的補休時數。</div></div>
+      <div id="payOt"><div class="empty">載入中…</div></div>
     </section>
   </div>
 
@@ -459,7 +479,7 @@ T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'erro
 var S = { page:'Rev', unsub:[], busy:false, nL:0, nO:0, nC:0,
   accounts:[], bals:{}, allLeaves:[], allOts:[] };
 var TITLE = { Rev:'審核', Acc:'帳號與時數', Log:'完整紀錄', Cal:'行事曆',
-  Set:'到期結算', Pay:'薪資', Sys:'系統設定' };
+  Set:'到期結算', Pay:'本月統計', Sys:'系統設定' };
 function showErr(id,msg){ var b=el('#'+id);
   if(!msg){ b.classList.add('hide'); return; } b.textContent=msg; b.classList.remove('hide'); }
 
@@ -540,7 +560,7 @@ el('#calAdd').onclick = function(){
   }).catch(function(e){ toast(e.message,'error'); });
 };
 
-/* ---------- 薪資 ---------- */
+/* ---------- 本月統計（給財務對薪水用，不算金額） ---------- */
 function initPaySelectors(){
   if(el('#payYear').options.length) return;
   var now = new Date(), y = now.getFullYear(), o = '';
@@ -551,61 +571,76 @@ function initPaySelectors(){
   el('#payMonth').innerHTML = m; el('#payMonth').value = now.getMonth();
   el('#payYear').onchange = loadPay; el('#payMonth').onchange = loadPay;
 }
-function money(n){ return 'NT$ ' + Math.round(n).toLocaleString('en-US'); }
 
 function loadPay(){
   initPaySelectors();
   var y = parseInt(el('#payYear').value), m = parseInt(el('#payMonth').value);
+  var mKey = y + '-' + String(m + 1).padStart(2, '0');
   el('#payList').innerHTML = '<div class="empty">計算中…</div>';
-  T.computeAllSalary(y, m).then(function(rows){
-    var now = new Date();
-    var isThisMonth = (now.getFullYear() === y && now.getMonth() === m);
-    var box = el('#payList');
-    if(!rows.length){ box.innerHTML = '<div class="empty">還沒有任何人員。</div>'; return; }
-    box.innerHTML = '';
-    rows.forEach(function(r){
-      var d = document.createElement('div'); d.className = 'pay';
-      var h = '<div class="payhd"><b>' + esc(r.name) + '</b>' +
-        '<span class="rate">時薪 ' + r.rate + ' × 7 × 23</span>' +
-        '<span class="fin">' + money(r.finalPay) + '</span></div>';
-      h += '<div class="pgrid">' +
-        px('底薪', money(r.baseSalary), '') +
-        px('本月扣款', r.deductTotal ? '−' + money(r.deductTotal) : money(0), r.deductTotal ? 'd' : '');
-      if(isThisMonth){
-        h += px('到今天累積', money(r.accruedNow),
-             'g') +
-             px('之後不請假可領', money(r.ifNoMoreLeave), '');
-      } else {
-        h += px('實領', money(r.finalPay), 'g') +
-             px('上班日數', r.workdays + ' 天', '');
-      }
-      h += '</div>';
 
-      var lines = [];
-      if(r.hours.personal) lines.push('事假 <b>' + r.hours.personal + '</b> 小時 → 扣全薪 <b>−' +
-        money(r.deductPersonal) + '</b>');
-      if(r.sickHalfHours) lines.push('病假 <b>' + r.sickHalfHours +
-        '</b> 小時（年度 210 小時內）→ 扣半薪 <b>−' + money(r.deductSickHalf) + '</b>');
-      if(r.sickFullHours) lines.push('病假 <b>' + r.sickFullHours +
-        '</b> 小時（已超過 210 小時）→ 扣全薪 <b>−' + money(r.deductSickFull) + '</b>');
-      if(r.hours.annual) lines.push('特休 <b>' + r.hours.annual + '</b> 小時 → 不扣薪');
-      if(r.hours.comp) lines.push('補休 <b>' + r.hours.comp + '</b> 小時 → 不扣薪');
-      if(r.hours.period) lines.push('生理假 <b>' + r.hours.period + '</b> 小時 → 不扣薪');
-      if(r.hours.family) lines.push('家庭照顧假 <b>' + r.hours.family + '</b> 小時 → 不扣薪');
-      if(isThisMonth) lines.push('本月上班日已過 <b>' + r.workdaysPassed + '</b> / ' +
-        r.workdays + ' 天');
-      if(r.sickYearBefore) lines.push(y + ' 年病假已累計 <b>' + r.sickYearBefore +
-        '</b> 小時（本月之前）');
-      h += lines.length ? '<div class="paydet">' + lines.join('<br>') + '</div>'
-                        : '<div class="paydet">這個月沒有請假，全額給付。</div>';
+  Promise.all([
+    T.listAccounts(),
+    T.db.collection(T.COL.leave).get(),
+    T.db.collection(T.COL.overtime).get()
+  ]).then(function(r){
+    var accs = r[0], lv = [], ot = [];
+    r[1].forEach(function(d){ var o=d.data(); o.id=d.id; lv.push(o); });
+    r[2].forEach(function(d){ var o=d.data(); o.id=d.id; ot.push(o); });
+
+    var box = el('#payList'); box.innerHTML = '';
+    accs.forEach(function(a){
+      var by = {}, total = 0;
+      lv.forEach(function(x){
+        if(x.email !== a.email || x.status !== 'approved') return;
+        var segs = (x.segments && x.segments.length) ? x.segments
+                 : [{ ym: T.ym(x.startAt), hours: x.hours }];
+        segs.forEach(function(sg){
+          if(sg.ym !== mKey) return;
+          by[x.type] = roundHalf((by[x.type] || 0) + sg.hours);
+          total = roundHalf(total + sg.hours);
+        });
+      });
+      var d = document.createElement('div'); d.className = 'mrow';
+      var h = '<div class="mhd"><b>' + esc(a.name || a.email) + '</b>' +
+        '<span class="tot">' + total + ' 小時</span></div>';
+      h += total > 0
+        ? '<div class="mtypes">' + T.LEAVE_TYPES.map(function(t){
+            var v = by[t.id] || 0;
+            return '<div class="mt' + (v ? '' : ' z') + '"><div class="k">' + t.label + '</div>' +
+              '<div class="v">' + v + '<small>小時</small></div></div>';
+          }).join('') + '</div>'
+        : '<div class="mnone">這個月沒有請假。</div>';
       d.innerHTML = h;
       box.appendChild(d);
     });
-  }).catch(function(e){ el('#payList').innerHTML = '<div class="empty">計算失敗：' + esc(e.message) + '</div>'; });
-}
-function px(k, v, cls){
-  return '<div class="px ' + (cls||'') + '"><div class="k">' + k + '</div>' +
-    '<div class="v">' + v + '</div></div>';
+    if(!accs.length) box.innerHTML = '<div class="empty">還沒有人員資料。</div>';
+
+    var ob = el('#payOt'); ob.innerHTML = '';
+    accs.forEach(function(a){
+      var hrs = 0, bonus = 0, cnt = 0, dispatch = 0;
+      ot.forEach(function(x){
+        if(x.email !== a.email || x.status !== 'approved') return;
+        if((x.ym || T.ym(x.date)) !== mKey) return;
+        hrs = roundHalf(hrs + x.hours);
+        bonus = roundHalf(bonus + (x.bonusHours || 0));
+        cnt++; if(x.isDispatch) dispatch++;
+      });
+      var d = document.createElement('div'); d.className = 'mrow';
+      d.innerHTML = '<div class="mhd"><b>' + esc(a.name || a.email) + '</b>' +
+        '<span class="tot">' + roundHalf(hrs + bonus) + ' 小時</span></div>' +
+        (cnt
+          ? '<div class="mtypes">' +
+            '<div class="mt"><div class="k">實際加班</div><div class="v">' + hrs + '<small>小時</small></div></div>' +
+            '<div class="mt' + (bonus?'':' z') + '"><div class="k">核派加倍</div><div class="v">+' + bonus + '<small>小時</small></div></div>' +
+            '<div class="mt"><div class="k">補休入帳</div><div class="v">' + roundHalf(hrs+bonus) + '<small>小時</small></div></div>' +
+            '<div class="mt"><div class="k">筆數</div><div class="v">' + cnt + '<small>筆</small></div></div>' +
+            '</div>'
+          : '<div class="mnone">這個月沒有加班。</div>');
+      ob.appendChild(d);
+    });
+  }).catch(function(e){
+    el('#payList').innerHTML = '<div class="empty">計算失敗：' + esc(e.message) + '</div>';
+  });
 }
 
 /* ---------- 系統設定 ---------- */
