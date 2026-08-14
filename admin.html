@@ -658,8 +658,8 @@ el('#savePw').onclick = function(){
   if(!confirm('把檢視系統的密碼改成「' + p + '」？\n\n' +
      '所有裝置的通知都會被關閉，每個人要重新輸入新密碼才會再收到。')) return;
   var b = el('#savePw'); b.disabled = true; b.textContent = '更新中…';
-  T.setStatsPassword(p).then(function(){
-    toast('已更新，所有通知已關閉','success');
+  T.setStatsPassword(p).then(function(r){
+    toast('已更新，' + (r.removedSubs || 0) + ' 台裝置的通知已關閉','success');
     el('#newStatsPw').value = ''; loadSys();
   }).catch(function(e){ toast(e.message,'error'); })
     .then(function(){ b.disabled = false; b.textContent = '更新密碼並關閉所有通知'; });
