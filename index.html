@@ -6,6 +6,10 @@
 <meta name="theme-color" content="#0A0D14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="請假系統">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <title>請假加班系統 — 台灣物理學會行政室</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -241,6 +245,31 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
   display:grid;place-items:center;padding:0 4px;font-family:var(--mono)}
 .tabbar button{position:relative}
 
+/* ===== 快捷鍵 ===== */
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.quick button{background:var(--bg);border:1px solid rgba(255,255,255,.09);border-radius:10px;
+  padding:11px 6px;cursor:pointer;font-size:14px;color:var(--dim);width:100%}
+.quick button[aria-pressed="true"]{color:var(--gold-b);border-color:transparent;
+  background:rgba(217,169,60,.1);box-shadow:0 0 0 1px rgba(217,169,60,.55)}
+
+/* ===== 編輯待審假單 ===== */
+.rowbtns{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+.rowbtns .btn{width:auto}
+.editbox{background:var(--bg);border-radius:11px;padding:15px;margin-top:11px;
+  box-shadow:0 0 0 1px var(--line)}
+.editbox label{display:block;font-size:12px;color:var(--dim);margin-bottom:6px;margin-top:11px}
+.editbox label:first-child{margin-top:0}
+.editbox .ef{display:flex;gap:9px;margin-top:13px}
+.editbox .ef .btn{width:auto}
+
+/* ===== 代理請求 ===== */
+.pxr{padding:16px 17px;border-bottom:1px solid rgba(255,255,255,.05)}
+.pxr:last-child{border-bottom:none}
+.pxr .who{font-weight:700;font-size:15.5px}
+.pxr .dt{font-family:var(--mono);font-size:12.5px;color:var(--dim);margin-top:4px;line-height:1.7}
+.pxr .btns{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.pxr .btns .btn{width:100%}
+
 /* ===== 設定 ===== */
 .kv{display:flex;align-items:baseline;gap:12px;padding:10px 0;
   border-bottom:1px solid rgba(255,255,255,.05);font-size:13.5px}
@@ -314,6 +343,12 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
       </div>
     </div>
 
+    <div class="card hide" id="pendCard">
+      <div class="cbd" style="padding:14px 16px">
+        <div class="info" id="pendInfo" style="margin:0"></div>
+      </div>
+    </div>
+
     <div class="acts">
       <button class="big" id="bLeave" aria-selected="true">
         <span class="ic">🌴</span><span class="t">我要請假</span></button>
@@ -345,6 +380,14 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
             <span><i class="d-sel"></i>已選</span>
           </div>
         </div>
+        <div class="field">
+          <label class="lb">快速選擇</label>
+          <div class="quick">
+            <button type="button" data-q="full">整天</button>
+            <button type="button" data-q="am">上午</button>
+            <button type="button" data-q="pm">下午</button>
+          </div>
+        </div>
         <div class="field"><label class="lb">從</label>
           <div class="row2"><input type="date" id="sd"><input type="time" id="st" value="09:00" step="1800"></div></div>
         <div class="field"><label class="lb">到</label>
@@ -359,7 +402,10 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
             <textarea id="lateR" placeholder="說明原因"></textarea></div></div>
         <div class="field"><label class="sw"><input type="checkbox" id="prx">需要職務代理人</label>
           <div id="prxW" class="hide" style="margin-top:10px">
-            <input type="text" id="prxN" placeholder="代理人姓名"></div></div>
+            <select id="prxN"></select>
+            <div class="hint">代理人要先確認，確認之後才會送給秘書長審核。<br>
+              如果代理人駁回，這張假單會直接作廢，要重新申請。</div>
+          </div></div>
         <button class="btn" id="subL">送出假單</button>
       </div>
     </section>
@@ -380,7 +426,8 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
           <div class="after" id="ocalcAfter"></div>
         </div>
         <div class="field"><label class="lb" for="orsn">加班事由</label>
-          <textarea id="orsn" placeholder="處理什麼工作。如果是週末的會議或活動，請寫清楚，秘書長會判斷是否為核派加班"></textarea>
+          <textarea id="orsn" placeholder="請具體說明處理什麼工作。如果是週末的會議或活動，寫清楚一點，秘書長會判斷是否為核派加班"></textarea>
+          <div class="hint" id="orsnCnt">至少要寫 10 個字（目前 0 個字）</div>
           <div class="hint">加班至少 1 小時（第一小時以整數計，之後以 0.5 計）。<br>
             工作日一天最多 4 小時，一個月總計不超過 46 小時。<br>
             核派加班補休加倍，由秘書長審核時認定。</div></div>
@@ -404,13 +451,22 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 
   <!-- 通知（保留） -->
   <section id="pNoti" class="hide">
+    <div class="card hide" id="proxyCard">
+      <div class="chd"><h2>需要你確認的代理</h2><span class="unit" id="proxyCnt"></span></div>
+      <div id="proxyList"></div>
+    </div>
     <div class="card">
       <div class="chd"><h2>通知</h2><span class="unit" id="notiCnt"></span></div>
       <div id="notiList"><div class="empty">目前沒有通知。</div></div>
     </div>
-    <div class="card"><div class="cbd" style="padding:14px 16px">
-      <div class="hint" style="margin:0">手機推播還在做，目前通知只會出現在這一頁。</div>
-    </div></div>
+    <div class="card">
+      <div class="chd"><h2>手機通知</h2></div>
+      <div class="cbd">
+        <div id="pushState" class="info"></div>
+        <button class="btn" id="pushBtn">開啟手機通知</button>
+        <div class="hint" id="pushHint" style="margin-top:12px"></div>
+      </div>
+    </div>
   </section>
 
   <!-- 設定 -->
@@ -472,7 +528,7 @@ var T = window.TPS, el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.round
 T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'error'); });
 
 var S = { page:'Home', tab:'leave', type:'annual', recKind:'all',
-          bal:{}, peak:{a:1,c:1}, unsub:[], busy:false, leaves:[], ots:[], notis:[] };
+          bal:{}, peak:{a:1,c:1}, unsub:[], busy:false, leaves:[], ots:[], notis:[], proxies:[] };
 var THIS_MONTH = (function(){ var d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); })();
 
@@ -527,15 +583,59 @@ function enter(u){
     S.peak.c = Math.max(S.peak.c, b.compRemaining || 0, 1);
     paintBal();
   }));
-  S.unsub.push(T.watchMyLeaves(function(l){ S.leaves = l; paintMonth(); renderRecs(); }));
-  S.unsub.push(T.watchMyOvertime(function(l){ S.ots = l; paintMonth(); renderRecs(); }));
+  S.unsub.push(T.watchMyLeaves(function(l){ S.leaves = l; paintMonth(); paintPending(); renderRecs(); }));
+  S.unsub.push(T.watchMyOvertime(function(l){ S.ots = l; paintMonth(); paintPending(); renderRecs(); }));
   S.unsub.push(T.watchMyNotices(function(l){ S.notis = l; renderNotis(); }));
   T.loadCalendar().then(function(){ drawCal(); autoLeave(); });
+  S.unsub.push(T.watchProxyRequests(function(l){ S.proxies = l; renderProxies(); }));
+  T.proxyCandidates().then(function(list){
+    el('#prxN').innerHTML = list.length
+      ? '<option value="">請選擇代理人</option>' + list.map(function(a){
+          return '<option value="' + esc(a.email) + '">' + esc(a.name || a.email) + '</option>'; }).join('')
+      : '<option value="">目前沒有其他同仁可以指定</option>';
+  });
+}
+
+/* ---------- 需要我確認的代理 ---------- */
+function renderProxies(){
+  var n = S.proxies.length;
+  el('#proxyCard').classList.toggle('hide', n === 0);
+  el('#proxyCnt').textContent = n ? n + ' 筆' : '';
+  renderNotis();
+  if(!n) return;
+  var box = el('#proxyList'); box.innerHTML = '';
+  S.proxies.forEach(function(x){
+    var label = (x.type === 'other' && x.otherType) ? x.otherType : T.leaveTypeLabel(x.type);
+    var d = document.createElement('div'); d.className = 'pxr';
+    d.innerHTML = '<div class="who">' + esc(x.name) + ' 指定你當職務代理人</div>' +
+      '<div class="dt">' + esc(label) + '　' + x.hours + ' 小時<br>' +
+      T.fmtDateTime(x.startAt) + ' → ' + T.fmtDateTime(x.endAt) + '<br>' +
+      '申請時間 ' + T.fmtStamp(x.createdAt) + '</div>';
+    var btns = document.createElement('div'); btns.className = 'btns';
+    var yes = document.createElement('button'); yes.className = 'btn'; yes.textContent = '我可以代理';
+    var no  = document.createElement('button'); no.className = 'btn ghost'; no.textContent = '無法代理';
+    yes.onclick = function(){
+      yes.disabled = no.disabled = true;
+      T.respondProxy(x.id, true, '').then(function(){ toast('已確認，假單送交秘書長','success'); })
+       .catch(function(e){ toast(e.message,'error'); yes.disabled = no.disabled = false; });
+    };
+    no.onclick = function(){
+      var why = prompt('為什麼無法代理？（會讓申請人看到，可留空）');
+      if(why === null) return;
+      if(!confirm('駁回後這張假單會直接作廢，' + esc(x.name) + ' 要重新申請。確定嗎？')) return;
+      yes.disabled = no.disabled = true;
+      T.respondProxy(x.id, false, why).then(function(){ toast('已駁回','success'); })
+       .catch(function(e){ toast(e.message,'error'); yes.disabled = no.disabled = false; });
+    };
+    btns.appendChild(yes); btns.appendChild(no);
+    d.appendChild(btns);
+    box.appendChild(d);
+  });
 }
 
 /* ---------- 通知 ---------- */
 function renderNotis(){
-  var unread = S.notis.filter(function(n){ return !n.read; }).length;
+  var unread = S.notis.filter(function(n){ return !n.read; }).length + S.proxies.length;
   var tb = document.querySelector('.tabbar button[data-p="Noti"]');
   var old = tb.querySelector('.nb'); if(old) old.remove();
   if(unread){ var s2=document.createElement('span'); s2.className='nb'; s2.textContent=unread; tb.appendChild(s2); }
@@ -559,7 +659,10 @@ Array.prototype.forEach.call(document.querySelectorAll('.tabbar button'), functi
     ['Home','Rec','Noti','Set'].forEach(function(p){
       el('#p'+p).classList.toggle('hide', p !== S.page); });
     window.scrollTo(0,0);
-    if(S.page === 'Noti') setTimeout(function(){ T.markAllNoticesRead(S.notis); }, 1200);
+    if(S.page === 'Noti'){
+      renderPush();
+      setTimeout(function(){ T.markAllNoticesRead(S.notis); }, 1200);
+    }
   };
 });
 
@@ -579,11 +682,32 @@ function paintBal(){
     (S.bal.compCarryExpire ? T.fmtDate(S.bal.compCarryExpire) : '今年底') + ' 到期');
   if(lines.length){
     n.classList.remove('hide');
-    n.innerHTML = '斜紋那段是遞延的，請假會優先扣。<br>' + lines.join('<br>') +
-      '<br>到期沒用完會依規定折算薪資。';
+    n.innerHTML = '斜紋那段是遞延的，請假會優先扣。<br>' + lines.join('<br>');
   } else n.classList.add('hide');
   paintCalc();
 }
+function paintPending(){
+  var pend = S.leaves.filter(function(x){ return x.status === 'pending'; });
+  var pendOt = S.ots.filter(function(x){ return x.status === 'pending'; });
+  var waitProxy = pend.filter(function(x){ return x.needsProxy && x.proxyStatus === 'waiting'; });
+  var n = pend.length + pendOt.length;
+  el('#pendCard').classList.toggle('hide', n === 0);
+  if(!n) return;
+  /* 注意：陣列的 sort 預設是照字串比大小，數字一定要自己給比較函式 */
+  var oldest = pend.concat(pendOt).map(function(x){
+    return x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : Date.now();
+  }).sort(function(a,b){ return a - b; })[0];
+  var days = Math.floor((Date.now() - oldest) / 86400000);
+  var parts = [];
+  if(pend.length) parts.push(pend.length + ' 張假單');
+  if(pendOt.length) parts.push(pendOt.length + ' 張加班單');
+  var txt = parts.join('、') + ' 還在等審核';
+  if(days >= 1) txt += '，最久已等 ' + days + ' 天';
+  if(waitProxy.length) txt += '<br>其中 ' + waitProxy.length + ' 張還在等代理人（' +
+    esc(waitProxy[0].proxyName || '') + '）確認';
+  el('#pendInfo').innerHTML = txt + '。詳細進度可以到「紀錄」看。';
+}
+
 function paintMonth(){
   el('#moLv').textContent = T.monthLeaveHours(S.leaves, THIS_MONTH);
   el('#moOt').textContent = T.monthOvertimeHours(S.ots, THIS_MONTH);
@@ -593,7 +717,7 @@ function paintMonth(){
 var chips = el('#chips');
 T.LEAVE_TYPES.forEach(function(t){
   var b = document.createElement('button');
-  b.className = 'chip'; b.type = 'button'; b.textContent = t.label;
+  b.className = 'chip'; b.type = 'button'; b.textContent = t.label;   // textContent 本身就安全
   b.setAttribute('aria-pressed', t.id === S.type);
   b.onclick = function(){
     S.type = t.id;
@@ -713,13 +837,38 @@ function paintCalc(){
     ? '核准後加班補休增加 <b>+' + calcO + '</b> 小時'
     : '<span style="color:var(--dim2)">請選日期和起訖時間</span>';
 }
-['#st','#et'].forEach(function(i){ el(i).onchange = autoLeave; });
+/* 快速選擇：整天 / 上午 / 下午 */
+var QUICK = { full:['09:00','17:00'], am:['09:00','12:00'], pm:['13:00','17:00'] };
+Array.prototype.forEach.call(document.querySelectorAll('.quick button'), function(b){
+  b.onclick = function(){
+    var q = QUICK[b.dataset.q];
+    if(!el('#sd').value) el('#sd').value = iso;
+    el('#ed').value = el('#sd').value;          // 快捷一律當天
+    el('#st').value = q[0]; el('#et').value = q[1];
+    Array.prototype.forEach.call(document.querySelectorAll('.quick button'), function(x){
+      x.setAttribute('aria-pressed', x === b); });
+    autoLeave(); drawCal();
+  };
+});
+function clearQuick(){
+  Array.prototype.forEach.call(document.querySelectorAll('.quick button'), function(x){
+    x.setAttribute('aria-pressed', false); });
+}
+['#st','#et'].forEach(function(i){ el(i).onchange = function(){ clearQuick(); autoLeave(); }; });
 el('#ed').onchange = function(){ autoLeave(); drawCal(); };
 el('#sd').onchange = function(){
   if(!el('#ed').value || el('#ed').value < el('#sd').value) el('#ed').value = el('#sd').value;
   autoLeave(); drawCal();
 };
 ['#od','#os','#oe'].forEach(function(i){ el(i).onchange = autoOt; });
+el('#orsn').oninput = function(){
+  var n = el('#orsn').value.trim().length;
+  var box = el('#orsnCnt');
+  box.textContent = n >= T.OT_REASON_MIN
+    ? '已寫 ' + n + ' 個字'
+    : '至少要寫 ' + T.OT_REASON_MIN + ' 個字（目前 ' + n + ' 個字）';
+  box.style.color = n >= T.OT_REASON_MIN ? 'var(--ok)' : 'var(--dim2)';
+};
 el('#late').onchange = function(e){ el('#lateW').classList.toggle('hide', !e.target.checked); };
 el('#prx').onchange  = function(e){ el('#prxW').classList.toggle('hide', !e.target.checked); };
 
@@ -732,10 +881,14 @@ el('#subL').onclick = function(){
   var b = el('#subL'); S.busy = true; b.disabled = true; b.textContent = '送出中…';
   T.submitLeave({ type:S.type, otherType:el('#oth').value, startAt:s, endAt:e, hours:calcL,
     isLate:el('#late').checked, lateReason:el('#lateR').value,
-    needsProxy:el('#prx').checked, proxyName:el('#prxN').value })
+    needsProxy:el('#prx').checked,
+    proxyEmail:el('#prxN').value,
+    proxyName:(el('#prxN').selectedIndex >= 0 && el('#prxN').value)
+      ? el('#prxN').options[el('#prxN').selectedIndex].text : '' })
    .then(function(){
      toast('假單已送出，等秘書長審核','success');
-     ['#oth','#lateR','#prxN'].forEach(function(i){ el(i).value=''; });
+     ['#oth','#lateR'].forEach(function(i){ el(i).value=''; });
+     el('#prxN').value = '';
      el('#late').checked = el('#prx').checked = false;
      el('#lateW').classList.add('hide'); el('#prxW').classList.add('hide');
    })
@@ -750,6 +903,8 @@ el('#subO').onclick = function(){
   if(!calcO) return showErr('oErr','結束時間要晚於開始時間。');
   var bad = T.validateOvertime(calcO, new Date(d+'T00:00:00'), 0);
   if(bad) return showErr('oErr', bad);
+  if(el('#orsn').value.trim().length < T.OT_REASON_MIN)
+    return showErr('oErr','加班事由至少要寫 ' + T.OT_REASON_MIN + ' 個字。');
   var b = el('#subO'); S.busy = true; b.disabled = true; b.textContent = '送出中…';
   T.submitOvertime({ date:new Date(d+'T00:00:00'), startAt:dt(d, el('#os').value),
     endAt:dt(d, el('#oe').value), hours:calcO, reason:el('#orsn').value })
@@ -757,7 +912,7 @@ el('#subO').onclick = function(){
      toast(r.overCapWarning
        ? '已送出。本月加班已達 ' + r.monthlyUsed + ' 小時，超過 46 小時上限，已標記提醒秘書長'
        : '加班單已送出，等秘書長審核','success');
-     el('#orsn').value = '';
+     el('#orsn').value = ''; el('#orsn').oninput();
    })
    .catch(function(err){ showErr('oErr', err.message); })
    .then(function(){ S.busy=false; b.disabled=false; b.textContent='送出加班單'; });
@@ -818,22 +973,100 @@ function recCard(r){
       T.fmtStamp(r.reviewedAt) + '</b>　' + esc(r.reviewedBy || '');
   if(r.status === 'cancelled')
     trail += '<br>撤銷　<b>' + T.fmtStamp(r.cancelledAt) + '</b>';
-  if(r.status === 'pending') trail += '<br>等待秘書長審核中';
+  if(r.needsProxy && r.proxyStatus === 'waiting')
+    trail += '<br>等待 ' + esc(r.proxyName || '代理人') + ' 確認代理';
+  else if(r.needsProxy && r.proxyStatus === 'accepted')
+    trail += '<br>' + esc(r.proxyName || '代理人') + ' 已確認代理　<b>' +
+      T.fmtStamp(r.proxyRespondedAt) + '</b>';
+  else if(r.needsProxy && r.proxyStatus === 'declined')
+    trail += '<br><span style="color:var(--bad)">' + esc(r.proxyName || '代理人') +
+      ' 駁回代理' + (r.proxyNote ? '：' + esc(r.proxyNote) : '') + '</span>';
+  if(r.status === 'pending' && !(r.needsProxy && r.proxyStatus === 'waiting'))
+    trail += '<br>等待秘書長審核中';
+  if(r.cancelRequest === 'waiting')
+    trail += '<br><span style="color:var(--warn)">已申請撤銷，等秘書長處理</span>';
+  else if(r.cancelRequest === 'rejected')
+    trail += '<br><span style="color:var(--bad)">撤銷申請被駁回' +
+      (r.cancelReviewNote ? '：' + esc(r.cancelReviewNote) : '') + '</span>';
+  if(r.editedByOwner) trail += '<br>已修改過';
   if(r.adminNote) trail += '<br>註記：' + esc(r.adminNote);
   h += trail + '</div>';
   d.innerHTML = h;
 
   if(isLeave && r.status === T.STATUS.PENDING){
+    var row = document.createElement('div'); row.className = 'rowbtns';
+    var canEdit = !(r.needsProxy && r.proxyStatus === 'accepted');
+    if(canEdit){
+      var eb = document.createElement('button');
+      eb.className = 'btn ghost sm'; eb.textContent = '修改';
+      eb.onclick = function(){
+        if(d.querySelector('.editbox')){ d.querySelector('.editbox').remove(); return; }
+        d.appendChild(editBox(r));
+      };
+      row.appendChild(eb);
+    }
     var c = document.createElement('button');
-    c.className = 'btn ghost sm'; c.textContent = '撤銷'; c.style.marginTop = '11px';
+    c.className = 'btn ghost sm'; c.textContent = '撤銷';
     c.onclick = function(){
       if(!confirm('確定撤銷這張假單？')) return;
       T.cancelLeave(r.id).then(function(){ toast('已撤銷','success'); })
        .catch(function(e){ toast(e.message,'error'); });
     };
-    d.appendChild(c);
+    row.appendChild(c);
+    d.appendChild(row);
+  }
+  /* 已核准的要申請撤銷，秘書長同意才退時數 */
+  if(isLeave && r.status === T.STATUS.APPROVED && r.cancelRequest !== 'waiting'
+     && r.cancelRequest !== 'approved'){
+    var rq = document.createElement('button');
+    rq.className = 'btn ghost sm'; rq.textContent = '申請撤銷'; rq.style.marginTop = '11px';
+    rq.onclick = function(){
+      var why = prompt('這張假已經核准了，撤銷要秘書長同意。\n\n請說明原因：');
+      if(why === null) return;
+      if(!why.trim()) return toast('請說明原因','error');
+      T.requestCancel(r.id, why).then(function(){ toast('已送出撤銷申請','success'); })
+       .catch(function(e){ toast(e.message,'error'); });
+    };
+    d.appendChild(rq);
   }
   return d;
+}
+
+/* ---------- 修改待審中的假單 ---------- */
+function toLocalDT(v){
+  var dt = T.toDate(v);
+  if(isNaN(dt)) return '';
+  return dt.getFullYear() + '-' + pad2(dt.getMonth()+1) + '-' + pad2(dt.getDate()) +
+    'T' + pad2(dt.getHours()) + ':' + pad2(dt.getMinutes());
+}
+function editBox(r){
+  var w = document.createElement('div'); w.className = 'editbox';
+  w.innerHTML =
+    '<label>假別</label><select class="e-type">' +
+      T.LEAVE_TYPES.map(function(t){
+        return '<option value="' + t.id + '"' + (t.id===r.type?' selected':'') + '>' +
+          t.label + '</option>'; }).join('') + '</select>' +
+    '<label>開始</label><input type="datetime-local" class="e-s" value="' + toLocalDT(r.startAt) + '">' +
+    '<label>結束</label><input type="datetime-local" class="e-e" value="' + toLocalDT(r.endAt) + '">' +
+    '<label>時數</label><input type="number" step="0.5" class="e-h" value="' + r.hours + '">';
+  var ef = document.createElement('div'); ef.className = 'ef';
+  var save = document.createElement('button'); save.className='btn sm'; save.textContent='儲存';
+  var cc = document.createElement('button'); cc.className='btn ghost sm'; cc.textContent='取消';
+  cc.onclick = function(){ w.remove(); };
+  save.onclick = function(){
+    var q = function(c){ return w.querySelector(c); };
+    var st = new Date(q('.e-s').value), en = new Date(q('.e-e').value);
+    var h = parseFloat(q('.e-h').value);
+    if(isNaN(st) || isNaN(en)) return toast('日期時間格式不對','error');
+    if(isNaN(h)) return toast('時數要填數字','error');
+    save.disabled = true; save.textContent = '儲存中…';
+    T.editMyPendingLeave(r.id, { type:q('.e-type').value, startAt:st, endAt:en, hours:h })
+     .then(function(){ toast('已更新','success'); w.remove(); })
+     .catch(function(e){ toast(e.message,'error'); save.disabled=false; save.textContent='儲存'; });
+  };
+  ef.appendChild(save); ef.appendChild(cc);
+  w.appendChild(ef);
+  return w;
 }
 
 /* ---------- 改密碼 ---------- */
@@ -855,6 +1088,56 @@ var td = new Date();
 var iso = td.getFullYear() + '-' + String(td.getMonth()+1).padStart(2,'0') + '-' + String(td.getDate()).padStart(2,'0');
 el('#sd').value = el('#ed').value = el('#od').value = iso;
 drawCal(); autoLeave(); autoOt();
+
+
+/* ---------- 手機通知 ---------- */
+function renderPush(){
+  var sup = T.pushSupport();
+  var hint = el('#pushHint'), st = el('#pushState'), btn = el('#pushBtn');
+  if(!sup.ok){
+    btn.disabled = true;
+    st.innerHTML = '這台裝置<b>還不能</b>收手機通知。';
+    st.style.color = 'var(--warn)';
+    hint.innerHTML = sup.why === 'needHomeScreen'
+      ? '<b>iPhone 要多做一步：</b><br>' +
+        '1. 用 Safari 打開這個網站<br>' +
+        '2. 點下方的「分享」按鈕<br>' +
+        '3. 選「加入主畫面」<br>' +
+        '4. <b>從主畫面的圖示</b>重新打開，再回來這一頁<br><br>' +
+        '（需要 iOS 16.4 以上）'
+      : '這個瀏覽器不支援通知功能，換 Safari 或 Chrome 試試。';
+    return;
+  }
+  btn.disabled = false;
+  T.pushStatus().then(function(p){
+    if(p.on){
+      st.innerHTML = '手機通知<b>已開啟</b>。假單被核准或駁回時會通知你。';
+      st.style.color = 'var(--ok)';
+      btn.textContent = '關閉手機通知';
+    } else {
+      st.innerHTML = '手機通知目前<b>沒有開啟</b>。';
+      st.style.color = 'var(--dim)';
+      btn.textContent = '開啟手機通知';
+    }
+    hint.innerHTML = '開啟後，假單被核准或駁回、有人指定你當代理人時，手機會跳通知。';
+  });
+}
+el('#pushBtn').onclick = function(){
+  var btn = el('#pushBtn');
+  btn.disabled = true;
+  T.pushStatus().then(function(p){
+    if(p.on){
+      return T.unsubscribePush().then(function(){ toast('已關閉手機通知','success'); });
+    }
+    var u = T.currentUser();
+    return T.subscribePush(u.email, u.name).then(function(){
+      toast('手機通知已開啟','success');
+      return T.sendPush(u.email, '通知已開啟 🔔',
+        '之後假單有結果就會像這樣通知你。', 'index.html', 'test');
+    });
+  }).catch(function(e){ toast(e.message,'error'); })
+    .then(function(){ btn.disabled = false; renderPush(); });
+};
 
 </script>
 </body>
