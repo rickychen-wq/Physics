@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0A0D14">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <title>後台 — 請假加班系統</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -208,6 +210,41 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 .swipehint{font-size:11.5px;color:var(--dim2);padding:11px 17px;
   border-bottom:1px solid rgba(255,255,255,.05)}
 
+/* ===== 今天誰不在 ===== */
+.today{padding:15px 17px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;
+  border-bottom:1px solid rgba(255,255,255,.05)}
+.today:last-child{border-bottom:none}
+.today .nm2{font-weight:700;font-size:15px}
+.today .ty2{color:var(--gold-b);font-size:13.5px}
+.today .tm{margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+.today.none{color:var(--dim2);font-size:13.5px;justify-content:center;padding:24px}
+
+/* ===== 等代理人中 ===== */
+.item.waiting{opacity:.62}
+.item.waiting .arow{display:none}
+.waitmsg{margin-top:12px;font-size:12.5px;color:var(--warn);
+  background:rgba(229,168,63,.08);border-radius:9px;padding:10px 12px}
+.secline{padding:11px 17px;font-size:11.5px;color:var(--dim2);letter-spacing:.06em;
+  background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.05)}
+
+/* ===== 薪資 ===== */
+.pay{padding:17px;border-bottom:1px solid rgba(255,255,255,.05)}
+.pay:last-child{border-bottom:none}
+.payhd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.payhd b{font-size:16px}
+.payhd .rate{font-family:var(--mono);font-size:12px;color:var(--dim2)}
+.payhd .fin{margin-left:auto;font-family:var(--mono);font-size:20px;font-weight:700;color:var(--gold-b)}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.pgrid .px{background:var(--bg);border-radius:10px;padding:11px 12px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.05)}
+.pgrid .px .k{font-size:11px;color:var(--dim);line-height:1.4}
+.pgrid .px .v{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--txt);line-height:1.5}
+.pgrid .px.d .v{color:var(--bad)}
+.pgrid .px.g .v{color:var(--ok)}
+.paydet{font-size:12.5px;color:var(--dim);line-height:1.9;margin-top:11px;
+  background:rgba(255,255,255,.03);border-radius:9px;padding:11px 13px}
+.paydet b{font-family:var(--mono);color:var(--gold-b)}
+
 /* ===== 結算 ===== */
 .stl{padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.05)}
 .stl:last-child{border-bottom:none}
@@ -260,6 +297,8 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
   <button class="ditem" data-p="Log" aria-selected="false"><span>🗂️</span>完整紀錄</button>
   <button class="ditem" data-p="Cal" aria-selected="false"><span>📅</span>行事曆</button>
   <button class="ditem" data-p="Set" aria-selected="false"><span>💰</span>到期結算</button>
+  <button class="ditem" data-p="Pay" aria-selected="false"><span>🧾</span>薪資</button>
+  <button class="ditem" data-p="Sys" aria-selected="false"><span>🔑</span>系統設定</button>
   <div class="dsep"></div>
   <button class="ditem" id="dOut"><span>🚪</span>登出</button>
 </aside>
@@ -267,6 +306,17 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 <main class="wrap">
   <!-- 審核 -->
   <div id="pRev">
+    <section class="card" id="todayCard">
+      <div class="chd"><h2>今天</h2><span class="unit" id="todayDate"></span></div>
+      <div id="todayList"><div class="empty">載入中…</div></div>
+    </section>
+
+    <section class="card hide" id="cancelCard">
+      <div class="chd"><h2>撤銷申請</h2><span class="unit" id="cC">0 筆</span></div>
+      <div class="info" style="margin:14px 16px 0">已核准的假單申請撤銷。同意的話時數會自動退回。</div>
+      <div id="cancelList"></div>
+    </section>
+
     <section class="card">
       <div class="chd"><h2>請假</h2><span class="unit" id="cL">0 筆</span></div>
       <div id="lList"><div class="empty">沒有待審的假單。</div></div>
@@ -340,6 +390,46 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
       <div id="setList"><div class="empty">載入中…</div></div>
     </section>
   </div>
+  <!-- 薪資 -->
+  <div id="pPay" class="hide">
+    <section class="card">
+      <div class="chd"><h2>月薪結算</h2>
+        <div class="sp"><select id="payYear"></select><select id="payMonth"></select></div>
+      </div>
+      <div class="info" style="margin:14px 16px 0">
+        底薪 = 時薪 × 7 小時 × 23 天。事假扣全薪，病假一年 210 小時內扣半薪、超過扣全薪。<br>
+        特休、補休、生理假、家庭照顧假不扣薪。時薪可以在「帳號與時數」個別調整。
+      </div>
+      <div id="payList"><div class="empty">載入中…</div></div>
+    </section>
+  </div>
+
+  <!-- 系統設定 -->
+  <div id="pSys" class="hide">
+    <section class="card">
+      <div class="chd"><h2>手機通知</h2></div>
+      <div class="cbd">
+        <div id="pushState" class="info"></div>
+        <button class="btn" id="pushBtn">開啟手機通知</button>
+        <div class="hint" id="pushHint" style="margin-top:12px"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="chd"><h2>檢視系統（stats）密碼</h2></div>
+      <div class="cbd">
+        <div class="info">這是給理事長等六位檢視者用的密碼。<br>
+          <b>改了密碼之後，所有裝置的通知會被強制關閉</b>，
+          每個人要重新輸入新密碼才會再收到。換人時用這招最乾淨。</div>
+        <div class="field"><label class="lb">目前密碼</label>
+          <input type="text" id="curStatsPw" readonly></div>
+        <div class="field"><label class="lb">改成</label>
+          <input type="text" id="newStatsPw" placeholder="至少 4 個字元"></div>
+        <button class="btn" id="savePw">更新密碼並關閉所有通知</button>
+        <div class="hint" id="pwMeta" style="margin-top:12px"></div>
+      </div>
+    </section>
+  </div>
 </main>
 </div>
 
@@ -358,11 +448,18 @@ if(!window.TPS){
     'onclick="location.reload(true)">重新載入</button></div>';
   throw new Error('shared.js 未載入');
 }
+/* 後台密鑰：Firestore 規則會檢查這把鑰匙。
+   換鑰匙時，admin.html、stats.html、firestore.rules 三邊要同時改。 */
+var T_KEY = 'tps-admin-8f3a2c91e7';
+window.TPS.setAdminKey(T_KEY);
+
 var T = window.TPS, el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.roundHalf;
 T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'error'); });
 
-var S = { page:'Rev', unsub:[], busy:false, nL:0, nO:0, accounts:[], bals:{} };
-var TITLE = { Rev:'審核', Acc:'帳號與時數', Log:'完整紀錄', Cal:'行事曆', Set:'到期結算' };
+var S = { page:'Rev', unsub:[], busy:false, nL:0, nO:0, nC:0,
+  accounts:[], bals:{}, allLeaves:[], allOts:[] };
+var TITLE = { Rev:'審核', Acc:'帳號與時數', Log:'完整紀錄', Cal:'行事曆',
+  Set:'到期結算', Pay:'薪資', Sys:'系統設定' };
 function showErr(id,msg){ var b=el('#'+id);
   if(!msg){ b.classList.add('hide'); return; } b.textContent=msg; b.classList.remove('hide'); }
 
@@ -384,17 +481,22 @@ el('#dOut').onclick = function(){
 function boot(){
   S.unsub.push(T.watchPendingLeaves(renderLeaves));
   S.unsub.push(T.watchPendingOvertime(renderOts));
+  S.unsub.push(T.watchCancelRequests(renderCancels));
+  loadToday();
   T.loadCalendar()
+   .then(function(){ return loadAccounts(); })   // 先抓一次，後面共用
    .then(function(){ return T.checkAllExpiry(); })
    .then(function(list){
      if(list.length) toast(list.length + ' 人有時數到期，請到「到期結算」確認','info');
      return T.autoGrantAll();
    })
    .then(function(g){
-     if(g.length) toast(g.length + ' 人到職週年，特休已自動發放','success');
-     loadAccounts();
+     if(g.length){
+       toast(g.length + ' 人到職週年，特休已自動發放','success');
+       loadAccounts();      // 有發放才需要重抓
+     }
    })
-   .catch(function(e){ console.warn(e); loadAccounts(); });
+   .catch(function(e){ console.warn('[admin] 例行檢查', e); });
 }
 
 /* ---------- 行事曆 ---------- */
@@ -436,6 +538,131 @@ el('#calAdd').onclick = function(){
     var y = el('#calYear'); if(y.value !== d.slice(0,4) && y.querySelector('option[value="'+d.slice(0,4)+'"]')) y.value = d.slice(0,4);
     loadCal();
   }).catch(function(e){ toast(e.message,'error'); });
+};
+
+/* ---------- 薪資 ---------- */
+function initPaySelectors(){
+  if(el('#payYear').options.length) return;
+  var now = new Date(), y = now.getFullYear(), o = '';
+  for(var i = y; i >= y - 2; i--) o += '<option value="' + i + '">' + i + ' 年</option>';
+  el('#payYear').innerHTML = o; el('#payYear').value = y;
+  var m = '';
+  for(var k = 1; k <= 12; k++) m += '<option value="' + (k-1) + '">' + k + ' 月</option>';
+  el('#payMonth').innerHTML = m; el('#payMonth').value = now.getMonth();
+  el('#payYear').onchange = loadPay; el('#payMonth').onchange = loadPay;
+}
+function money(n){ return 'NT$ ' + Math.round(n).toLocaleString('en-US'); }
+
+function loadPay(){
+  initPaySelectors();
+  var y = parseInt(el('#payYear').value), m = parseInt(el('#payMonth').value);
+  el('#payList').innerHTML = '<div class="empty">計算中…</div>';
+  T.computeAllSalary(y, m).then(function(rows){
+    var now = new Date();
+    var isThisMonth = (now.getFullYear() === y && now.getMonth() === m);
+    var box = el('#payList');
+    if(!rows.length){ box.innerHTML = '<div class="empty">還沒有任何人員。</div>'; return; }
+    box.innerHTML = '';
+    rows.forEach(function(r){
+      var d = document.createElement('div'); d.className = 'pay';
+      var h = '<div class="payhd"><b>' + esc(r.name) + '</b>' +
+        '<span class="rate">時薪 ' + r.rate + ' × 7 × 23</span>' +
+        '<span class="fin">' + money(r.finalPay) + '</span></div>';
+      h += '<div class="pgrid">' +
+        px('底薪', money(r.baseSalary), '') +
+        px('本月扣款', r.deductTotal ? '−' + money(r.deductTotal) : money(0), r.deductTotal ? 'd' : '');
+      if(isThisMonth){
+        h += px('到今天累積', money(r.accruedNow),
+             'g') +
+             px('之後不請假可領', money(r.ifNoMoreLeave), '');
+      } else {
+        h += px('實領', money(r.finalPay), 'g') +
+             px('上班日數', r.workdays + ' 天', '');
+      }
+      h += '</div>';
+
+      var lines = [];
+      if(r.hours.personal) lines.push('事假 <b>' + r.hours.personal + '</b> 小時 → 扣全薪 <b>−' +
+        money(r.deductPersonal) + '</b>');
+      if(r.sickHalfHours) lines.push('病假 <b>' + r.sickHalfHours +
+        '</b> 小時（年度 210 小時內）→ 扣半薪 <b>−' + money(r.deductSickHalf) + '</b>');
+      if(r.sickFullHours) lines.push('病假 <b>' + r.sickFullHours +
+        '</b> 小時（已超過 210 小時）→ 扣全薪 <b>−' + money(r.deductSickFull) + '</b>');
+      if(r.hours.annual) lines.push('特休 <b>' + r.hours.annual + '</b> 小時 → 不扣薪');
+      if(r.hours.comp) lines.push('補休 <b>' + r.hours.comp + '</b> 小時 → 不扣薪');
+      if(r.hours.period) lines.push('生理假 <b>' + r.hours.period + '</b> 小時 → 不扣薪');
+      if(r.hours.family) lines.push('家庭照顧假 <b>' + r.hours.family + '</b> 小時 → 不扣薪');
+      if(isThisMonth) lines.push('本月上班日已過 <b>' + r.workdaysPassed + '</b> / ' +
+        r.workdays + ' 天');
+      if(r.sickYearBefore) lines.push(y + ' 年病假已累計 <b>' + r.sickYearBefore +
+        '</b> 小時（本月之前）');
+      h += lines.length ? '<div class="paydet">' + lines.join('<br>') + '</div>'
+                        : '<div class="paydet">這個月沒有請假，全額給付。</div>';
+      d.innerHTML = h;
+      box.appendChild(d);
+    });
+  }).catch(function(e){ el('#payList').innerHTML = '<div class="empty">計算失敗：' + esc(e.message) + '</div>'; });
+}
+function px(k, v, cls){
+  return '<div class="px ' + (cls||'') + '"><div class="k">' + k + '</div>' +
+    '<div class="v">' + v + '</div></div>';
+}
+
+/* ---------- 系統設定 ---------- */
+function renderPush(){
+  var sup = T.pushSupport();
+  var hint = el('#pushHint'), st = el('#pushState'), btn = el('#pushBtn');
+  if(!sup.ok){
+    btn.disabled = true;
+    st.innerHTML = '這台裝置<b>還不能</b>收手機通知。';
+    st.style.color = 'var(--warn)';
+    hint.innerHTML = sup.why === 'needHomeScreen'
+      ? 'iPhone 要先用 Safari 開啟 → 分享 → 加入主畫面 → 從主畫面圖示重新打開。（需要 iOS 16.4 以上）'
+      : '這個瀏覽器不支援通知功能。';
+    return;
+  }
+  btn.disabled = false;
+  T.pushStatus().then(function(p){
+    st.innerHTML = p.on
+      ? '手機通知<b>已開啟</b>。有新的請假或加班申請時會通知你。'
+      : '手機通知目前<b>沒有開啟</b>。';
+    st.style.color = p.on ? 'var(--ok)' : 'var(--dim)';
+    btn.textContent = p.on ? '關閉手機通知' : '開啟手機通知';
+    hint.innerHTML = '開啟後，秘書送出請假或加班申請時，手機會立刻跳通知。';
+  });
+}
+el('#pushBtn').onclick = function(){
+  var btn = el('#pushBtn'); btn.disabled = true;
+  T.pushStatus().then(function(p){
+    if(p.on) return T.unsubscribePush().then(function(){ toast('已關閉','success'); });
+    return T.subscribePush('admin','秘書長').then(function(){
+      toast('手機通知已開啟','success');
+      return T.sendPush('admin','通知已開啟 🔔',
+        '之後有新的請假或加班申請就會像這樣通知你。','admin.html','test');
+    });
+  }).catch(function(e){ toast(e.message,'error'); })
+    .then(function(){ btn.disabled = false; renderPush(); });
+};
+
+function loadSys(){
+  renderPush();
+  T.getStatsPassword().then(function(c){
+    el('#curStatsPw').value = c.pw;
+    el('#pwMeta').textContent = '目前版本 ' + c.epoch +
+      '（每改一次密碼版本 +1，所有裝置的通知會一起關閉）';
+  });
+}
+el('#savePw').onclick = function(){
+  var p = el('#newStatsPw').value.trim();
+  if(p.length < 4) return toast('密碼至少 4 個字元','error');
+  if(!confirm('把檢視系統的密碼改成「' + p + '」？\n\n' +
+     '所有裝置的通知都會被關閉，每個人要重新輸入新密碼才會再收到。')) return;
+  var b = el('#savePw'); b.disabled = true; b.textContent = '更新中…';
+  T.setStatsPassword(p).then(function(){
+    toast('已更新，所有通知已關閉','success');
+    el('#newStatsPw').value = ''; loadSys();
+  }).catch(function(e){ toast(e.message,'error'); })
+    .then(function(){ b.disabled = false; b.textContent = '更新密碼並關閉所有通知'; });
 };
 
 /* ---------- 到期結算 ---------- */
@@ -482,15 +709,75 @@ Array.prototype.forEach.call(document.querySelectorAll('.ditem[data-p]'), functi
     S.page = b.dataset.p;
     Array.prototype.forEach.call(document.querySelectorAll('.ditem[data-p]'), function(x){
       x.setAttribute('aria-selected', x === b); });
-    ['Rev','Acc','Log','Cal','Set'].forEach(function(p){ el('#p'+p).classList.toggle('hide', p !== S.page); });
+    ['Rev','Acc','Log','Cal','Set','Pay','Sys'].forEach(function(p){ el('#p'+p).classList.toggle('hide', p !== S.page); });
     el('#pageTitle').textContent = TITLE[S.page];
     closeDrawer(); window.scrollTo(0,0);
     if(S.page === 'Acc') loadAccounts();
     if(S.page === 'Log') loadLog();
     if(S.page === 'Cal') loadCal();
     if(S.page === 'Set') loadSettle();
+    if(S.page === 'Pay') loadPay();
+    if(S.page === 'Sys') loadSys();
   };
 });
+
+/* ---------- 今天誰不在 ---------- */
+function loadToday(){
+  var now = new Date();
+  el('#todayDate').textContent = T.fmtDate(now) + ' ' +
+    ['日','一','二','三','四','五','六'][now.getDay()];
+  (S.allLeaves && S.allLeaves.length
+    ? Promise.resolve(S.allLeaves)
+    : T.db.collection(T.COL.leave).get().then(function(sn){
+        var a=[]; sn.forEach(function(d){ var o=d.data(); o.id=d.id; a.push(o); });
+        S.allLeaves=a; return a; })
+  ).then(function(all){
+    var out = T.whoIsOutToday(all, now);
+    var box = el('#todayList');
+    if(!out.length){
+      box.innerHTML = '<div class="today none">今天全員在班</div>';
+      return;
+    }
+    box.innerHTML = out.map(function(x){
+      var label = (x.type==='other' && x.otherType) ? x.otherType : T.leaveTypeLabel(x.type);
+      var sameDay = T.fmtDate(x.startAt) === T.fmtDate(x.endAt);
+      return '<div class="today"><span class="nm2">' + esc(x.name) + '</span>' +
+        '<span class="ty2">' + esc(label) + '</span>' +
+        '<span class="tm">' + (sameDay
+          ? T.fmtTime(x.startAt) + ' – ' + T.fmtTime(x.endAt)
+          : T.fmtDate(x.startAt) + ' – ' + T.fmtDate(x.endAt)) + '</span></div>';
+    }).join('');
+  }).catch(function(e){
+    console.warn('[admin] 今天誰不在', e);
+    el('#todayList').innerHTML = '<div class="today none">讀取失敗</div>';
+  });
+}
+
+/* ---------- 撤銷申請 ---------- */
+function renderCancels(list){
+  S.nC = list.length;
+  el('#cancelCard').classList.toggle('hide', !list.length);
+  el('#cC').textContent = list.length + ' 筆';
+  badge();
+  if(!list.length) return;
+  var box = el('#cancelList'); box.innerHTML = '';
+  list.forEach(function(r){
+    var label = (r.type==='other' && r.otherType) ? r.otherType : T.leaveTypeLabel(r.type);
+    var d = document.createElement('div'); d.className = 'item';
+    d.innerHTML = '<div class="itop"><span class="inm">' + esc(r.name) + '</span>' +
+      '<span class="ity">' + esc(label) + '</span>' +
+      '<span class="ih">' + r.hours + ' 小時</span></div>' +
+      '<div class="im">' + T.fmtDateTime(r.startAt) + ' → ' + T.fmtDateTime(r.endAt) + '</div>' +
+      '<div class="inn">撤銷原因：' + esc(r.cancelReason || '') + '</div>' +
+      '<div class="im">申請於 ' + T.fmtStamp(r.cancelRequestedAt) + '</div>' +
+      (r.annualHours > 0 ? '<div class="inn">同意後退回特休 ' + r.annualHours + ' 小時</div>' : '') +
+      (r.compHours > 0 ? '<div class="inn">同意後退回補休 ' + r.compHours + ' 小時</div>' : '');
+    d.appendChild(actions(
+      function(n){ return T.reviewCancelRequest(r.id, true, n); },
+      function(n){ return T.reviewCancelRequest(r.id, false, n); }));
+    box.appendChild(d);
+  });
+}
 
 /* ---------- 同意／駁回 ---------- */
 function actions(onOk, onNo){
@@ -512,7 +799,7 @@ function actions(onOk, onNo){
   return w;
 }
 function badge(){
-  var n = S.nL + S.nO;
+  var n = S.nL + S.nO + (S.nC || 0);
   el('#pageTitle').textContent = TITLE[S.page] + (S.page==='Rev' && n ? '' : '');
   var d = document.querySelector('.ditem[data-p="Rev"]');
   var old = d.querySelector('.badge'); if(old) old.remove();
@@ -520,11 +807,17 @@ function badge(){
 }
 
 function renderLeaves(list){
-  S.nL = list.length; el('#cL').textContent = list.length + ' 筆'; badge();
+  S.nL = list.length; badge();
+  var ready = list.filter(function(r){ return !(r.needsProxy && r.proxyStatus === 'waiting'); });
+  var waiting = list.filter(function(r){ return r.needsProxy && r.proxyStatus === 'waiting'; });
+  el('#cL').textContent = ready.length + ' 筆可審' + (waiting.length ? '　' + waiting.length + ' 筆等代理' : '');
   var box = el('#lList');
   if(!list.length){ box.innerHTML = '<div class="empty">沒有待審的假單。</div>'; return; }
   box.innerHTML = '';
-  list.forEach(function(r){
+  if(waiting.length && ready.length)
+    box.appendChild(secLine('可以審核'));
+  ready.concat(waiting).forEach(function(r, idx){
+    if(waiting.length && idx === ready.length) box.appendChild(secLine('等代理人確認中，還不能審核'));
     var label = (r.type==='other' && r.otherType) ? r.otherType : T.leaveTypeLabel(r.type);
     var d = document.createElement('div'); d.className = 'item';
     var h = '<div class="itop"><span class="inm">' + esc(r.name) + '</span>' +
@@ -540,13 +833,29 @@ function renderLeaves(list){
       h += '<div class="inn">分月計入：' + r.segments.map(function(s){
         return s.ym + ' ' + s.hours + 'h'; }).join('、') + '</div>';
     if(r.isLate && r.lateReason) h += '<div class="inn">補請原因：' + esc(r.lateReason) + '</div>';
-    if(r.needsProxy) h += '<div class="inn">職務代理人：' + esc(r.proxyName || '未填') + '</div>';
+    if(r.needsProxy){
+      var ps = r.proxyStatus === 'accepted' ? '已確認'
+             : r.proxyStatus === 'declined' ? '已駁回' : '等待確認中';
+      h += '<div class="inn">職務代理人：' + esc(r.proxyName || '未填') +
+        '　<span style="color:' + (r.proxyStatus==='accepted'?'var(--ok)':'var(--warn)') + '">' +
+        ps + '</span></div>';
+    }
     d.innerHTML = h;
-    d.appendChild(actions(
-      function(n){ return T.reviewLeave(r.id, T.STATUS.APPROVED, n); },
-      function(n){ return T.reviewLeave(r.id, T.STATUS.REJECTED, n); }));
+    if(r.needsProxy && r.proxyStatus === 'waiting'){
+      d.className = 'item waiting';
+      var w = document.createElement('div'); w.className = 'waitmsg';
+      w.textContent = '等 ' + (r.proxyName || '代理人') + ' 確認代理，確認後才能審核。';
+      d.appendChild(w);
+    } else {
+      d.appendChild(actions(
+        function(n){ return T.reviewLeave(r.id, T.STATUS.APPROVED, n); },
+        function(n){ return T.reviewLeave(r.id, T.STATUS.REJECTED, n); }));
+    }
     box.appendChild(d);
   });
+}
+function secLine(txt){
+  var e = document.createElement('div'); e.className = 'secline'; e.textContent = txt; return e;
 }
 
 function renderOts(list){
@@ -554,6 +863,28 @@ function renderOts(list){
   var box = el('#oList');
   if(!list.length){ box.innerHTML = '<div class="empty">沒有待審的加班單。</div>'; return; }
   box.innerHTML = '';
+  /* 先算出每個人每個月已經有多少加班（含待審），審核時才知道會不會超過 46 */
+  (S.allOts ? Promise.resolve(S.allOts)
+            : T.db.collection(T.COL.overtime).get().then(function(sn){
+                var a=[]; sn.forEach(function(d){ var o=d.data(); o.id=d.id; a.push(o); }); 
+                S.allOts=a; return a; })
+  ).then(function(all){
+    var used = {};
+    all.forEach(function(o){
+      if(o.status !== 'approved' && o.status !== 'pending') return;
+      var k = o.email + '|' + (o.ym || T.ym(o.date));
+      used[k] = T.roundHalf((used[k] || 0) + (o.hours || 0));
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-otsum]'), function(e){
+      var k = e.dataset.otsum, h = parseFloat(e.dataset.oth) || 0;
+      var tot = used[k] || 0;
+      var over = tot > T.MONTHLY_OT_CAP;
+      e.innerHTML = '本月加班合計 <b>' + tot + '</b> / ' + T.MONTHLY_OT_CAP + ' 小時' +
+        (over ? '　<span style="color:var(--bad)">已超過上限</span>' : '') +
+        '（這筆 ' + h + ' 小時已計入）';
+      e.style.color = over ? 'var(--bad)' : 'var(--dim)';
+    });
+  });
   list.forEach(function(o){
     var d = document.createElement('div'); d.className = 'item';
     d.innerHTML = '<div class="itop"><span class="inm">' + esc(o.name) + '</span>' +
@@ -563,6 +894,8 @@ function renderOts(list){
       '<div class="im">' + T.fmtDate(o.date) + '　' + T.fmtTime(o.startAt) + ' – ' + T.fmtTime(o.endAt) + '</div>' +
       '<div class="im">送出 ' + T.fmtStamp(o.createdAt) + '</div>' +
       (o.reason ? '<div class="inn">事由：' + esc(o.reason) + '</div>' : '') +
+      '<div class="inn" data-otsum="' + esc(o.email) + '|' + esc(o.ym || '') +
+        '" data-oth="' + o.hours + '">計算中…</div>' +
       '<div class="bonus"><label class="sw2"><input type="checkbox" id="dp_' + o.id + '"' +
         (o.isWeekend ? ' checked' : '') + '>這是核派加班（補休加倍）</label></div>' +
       '<div class="im" id="dpv_' + o.id + '"></div>';
@@ -592,18 +925,25 @@ function loadAccounts(){
     }));
   }).then(function(){
     fillWhoFilter();
-    return Promise.all(S.accounts.map(function(a){
-      return Promise.all([
-        T.fetchAllRecords({ email:a.email, kind:'leave' }),
-        T.fetchAllRecords({ email:a.email, kind:'overtime' })
-      ]).then(function(r){
+    /* 只抓一次全部資料再自己分給每個人。
+       之前是每個人各抓一次，五個人就把整個資料庫讀了十遍。 */
+    return Promise.all([
+      T.db.collection(T.COL.leave).get(),
+      T.db.collection(T.COL.overtime).get()
+    ]).then(function(r){
+      var lv = [], ot = [];
+      r[0].forEach(function(d){ var o = d.data(); o.id = d.id; lv.push(o); });
+      r[1].forEach(function(d){ var o = d.data(); o.id = d.id; ot.push(o); });
+      S.accounts.forEach(function(a){
         // 只算「這一任」的，不然換人接手後還會算到前任的時數
         var term = a.term || 1;
-        var mine = function(x){ return (x.term || 1) === term; };
-        a._lv = r[0].filter(mine);
-        a._ot = r[1].filter(mine);
+        var mine = function(x){ return x.email === a.email && (x.term || 1) === term; };
+        a._lv = lv.filter(mine);
+        a._ot = ot.filter(mine);
       });
-    }));
+      S.allLeaves = lv;
+      S.allOts = ot;
+    });
   }).then(renderAccounts).catch(function(e){ toast(e.message,'error'); });
 }
 
@@ -635,6 +975,8 @@ function renderAccounts(){
       '</div>' + lawHtml(a);
     var btns = document.createElement('div'); btns.className = 'abtns';
     btns.appendChild(mkBtn('改姓名', 'ghost', function(){ doRename(a); }));
+    btns.appendChild(mkBtn('時薪 ' + (a.hourlyRate || T.SALARY.defaultRate), 'ghost',
+      function(){ doRate(a); }));
     btns.appendChild(mkBtn('重設密碼', 'ghost', function(){ doResetPw(a); }));
     btns.appendChild(mkBtn('設定到職日', 'ghost', function(){ doHire(a); }));
     btns.appendChild(mkBtn('換人接手', 'no', function(){ doHandover(a); }));
@@ -685,14 +1027,19 @@ function bindBoxes(){
         ev.stopPropagation();
         var v = parseFloat(inp.value);
         if(isNaN(v)) return toast('請填數字','error');
-        setField(bx.dataset.em, bx.dataset.k, roundHalf(v));
+        if(roundHalf(v) === parseFloat(cur)){ row.remove(); return; }
+        var why = prompt('從 ' + cur + ' 改成 ' + roundHalf(v) + ' 小時。\n\n' +
+          '請說明原因（年底對帳時看得到）：');
+        if(why === null) return;
+        if(!why.trim()) return toast('請填原因','error');
+        setField(bx.dataset.em, bx.dataset.k, roundHalf(v), why.trim());
       };
       inp.onclick = function(ev){ ev.stopPropagation(); };
       inp.addEventListener('keydown', function(ev){ if(ev.key==='Enter') ok.click(); });
     };
   });
 }
-function setField(email, key, val){
+function setField(email, key, val, why){
   var b = S.bals[email] || {};
   var patch = {}; patch[key] = val; patch.updatedAt = T.serverTimestamp();
   var yearEnd = T.Timestamp.fromDate(new Date(new Date().getFullYear() + '-12-31T23:59:59'));
@@ -710,7 +1057,7 @@ function setField(email, key, val){
   }
   T.setMerge(T.COL.balances, email, patch)
    .then(function(){ return T.writeAudit('balance.edit', email,
-      { key:key, from:(b[key] || 0) }, { key:key, to:val }); })
+      { key:key, from:(b[key] || 0) }, { key:key, to:val, reason:why || '' }); })
    .then(function(){ toast('已更新','success'); loadAccounts(); })
    .catch(function(e){ toast(e.message,'error'); });
 }
@@ -725,6 +1072,20 @@ function doRename(a){
    .then(function(){ toast('已改為 ' + n,'success'); loadAccounts(); })
    .catch(function(e){ toast(e.message,'error'); });
 }
+function doRate(a){
+  var cur = a.hourlyRate || T.SALARY.defaultRate;
+  var v = prompt('「' + (a.name || a.email) + '」的時薪（元／小時）\n\n' +
+    '底薪 = 時薪 × 7 小時 × 23 天', cur);
+  if(v === null) return;
+  var n = parseFloat(v);
+  if(isNaN(n) || n <= 0) return toast('請填正確的數字','error');
+  T.upsertAccount(a.email, { hourlyRate: n })
+   .then(function(){ return T.writeAudit('account.rate', a.email,
+      { hourlyRate: cur }, { hourlyRate: n }); })
+   .then(function(){ toast('時薪已改為 ' + n,'success'); loadAccounts(); })
+   .catch(function(e){ toast(e.message,'error'); });
+}
+
 function doResetPw(a){
   if(!confirm('把「' + (a.name || a.email) + '」的密碼重設為 ' + T.DEFAULT_PW + '？')) return;
   T.resetPassword(a.email)
