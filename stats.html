@@ -244,6 +244,20 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 .legend span{display:flex;align-items:center;gap:7px}
 .legend i{width:11px;height:11px;border-radius:3px;display:block}
 
+/* 本月統計 */
+.mrow{padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.05)}
+.mrow:last-child{border-bottom:none}
+.mhd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:13px}
+.mhd b{font-size:17px}
+.mhd .tot{margin-left:auto;font-family:var(--mono);font-size:20px;font-weight:700;color:var(--gold-b)}
+.mtypes{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.mt{background:var(--bg);border-radius:10px;padding:11px 13px;box-shadow:0 0 0 1px rgba(255,255,255,.05)}
+.mt .k{font-size:11.5px;color:var(--dim);line-height:1.4}
+.mt .v{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--txt);line-height:1.5}
+.mt .v small{font-size:10.5px;color:var(--dim2);font-weight:400;margin-left:3px}
+.mt.z .v{color:var(--dim2)}
+.mnone{padding:16px 24px;color:var(--dim2);font-size:13.5px}
+
 /* 明細（第二層） */
 .rec{padding:17px 24px;border-bottom:1px solid rgba(255,255,255,.05)}
 .rec:last-child{border-bottom:none}
@@ -299,6 +313,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
   <button data-p="Sum" aria-selected="false" class="lv2 hide">年度總表</button>
   <button data-p="Bal" aria-selected="false" class="lv2 hide">目前時數</button>
   <button data-p="Ot" aria-selected="false" class="lv2 hide">加班</button>
+  <button data-p="Mon" aria-selected="false" class="lv2 hide">本月統計</button>
   <button data-p="Det" aria-selected="false" class="lv2 hide">明細</button>
   <button data-p="Noti" aria-selected="false">通知</button>
 </div>
@@ -389,7 +404,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
   </div>
 
   <!-- 通知 -->
-  <div id="pNoti">
+  <div id="pNoti" class="hide">
     <div class="card">
       <div class="chd"><h2>通知設定</h2></div>
       <div class="cbd">
@@ -400,6 +415,21 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
           如果學會更換了檢視密碼，通知會自動關閉，要重新輸入新密碼才會恢復。
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- 本月請假統計（給財務算薪水用） -->
+  <div id="pMon" class="hide">
+    <div class="card">
+      <div class="chd"><h2>請假統計</h2>
+        <div class="sp"><select id="monYear"></select><select id="monMonth"></select></div>
+        <div class="note">只計入已核准的假單。跨月的假單依工作日自動分月計入。</div>
+      </div>
+      <div id="monList"><div class="empty">載入中…</div></div>
+    </div>
+    <div class="card">
+      <div class="chd"><h2>加班統計</h2><div class="note">含核派加班加倍後的補休時數。</div></div>
+      <div id="monOt"><div class="empty">載入中…</div></div>
     </div>
   </div>
 
@@ -418,7 +448,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
       </div>
       <div class="chd" style="border-top:none"><h2>明細</h2><span class="unit" id="detCnt">—</span>
         <div class="sp"><button class="btn" id="expBtn" style="width:auto;padding:10px 20px">匯出 Excel</button></div>
-        <div class="note">可以直接修改或刪除。改動時數或狀態時，系統會自動把餘額調整正確。</div>
+        <div class="note">這裡只能檢視。要修改或刪除紀錄請到秘書長後台。</div>
       </div>
       <div id="detList"><div class="empty">載入中…</div></div>
     </div>
@@ -451,6 +481,9 @@ var T = window.TPS, el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.round
 T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'error'); });
 
 var LV2_KEY = 'tps.stats.lv2';
+/* 第二層密碼（完整資料）。跟秘書長後台的密碼分開，
+   財務只拿到這一組，拿不到後台。 */
+var LV2_PW = '04191972';
 var S = { page:'Cal', lv2:false, picked:null, statsPw:'physics', statsEpoch:0, y:new Date().getFullYear(), m:new Date().getMonth(),
           accounts:[], leaves:[], ots:[], loaded:false };
 
@@ -465,7 +498,7 @@ el('#gBtn').onclick = function(){
   T.getStatsPassword().then(function(c){
     S.statsPw = c.pw; S.statsEpoch = c.epoch;
     if(pw === c.pw){ enter(); return; }
-    if(pw === T.ADMIN_PASSWORD){ unlock(true); enter(); return; }
+    if(pw === LV2_PW){ unlock(true); enter(); return; }
     showErr('gErr','密碼不正確。');
   }).catch(function(){ showErr('gErr','連線失敗，請再試一次。'); })
     .then(function(){ b.disabled = false; b.textContent = '進入'; });
@@ -492,8 +525,8 @@ function unlock(on){
   try { on ? localStorage.setItem(LV2_KEY,'1') : localStorage.removeItem(LV2_KEY); }
   catch(e){ console.warn('[stats] 寫入解鎖狀態失敗', e); }
   if(!on && S.page !== 'Cal') go('Cal');
-  if(on) T.adminLogin(T.ADMIN_PASSWORD);   // 解鎖後才有修改權限
-  else T.adminLogout();
+  /* 這裡刻意不呼叫 adminLogin —— stats 全程唯讀，
+     修改和刪除只能在秘書長後台做。 */
 }
 el('#lockBtn').onclick = function(){
   if(S.lv2){
@@ -502,7 +535,7 @@ el('#lockBtn').onclick = function(){
   }
   var pw = prompt('輸入完整資料的密碼');
   if(pw === null) return;
-  if(pw !== T.ADMIN_PASSWORD) return toast('密碼不正確','error');
+  if(pw !== LV2_PW) return toast('密碼不正確','error');
   unlock(true);
   toast('已解鎖完整資料','success');
   renderAll();
@@ -514,7 +547,7 @@ function go(p){
   Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function(b){
     b.setAttribute('aria-selected', b.dataset.p === p);
   });
-  ['Cal','Sum','Bal','Ot','Det','Noti'].forEach(function(x){
+  ['Cal','Sum','Bal','Ot','Mon','Det','Noti'].forEach(function(x){
     el('#p'+x).classList.toggle('hide', x !== p);
   });
   window.scrollTo(0,0);
@@ -522,6 +555,7 @@ function go(p){
   if(p === 'Bal') renderBalances();
   if(p === 'Det') renderDetail();
   if(p === 'Ot') renderOt();
+  if(p === 'Mon') renderMonth();
   if(p === 'Noti') renderNoti();
 }
 Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function(b){
@@ -903,111 +937,10 @@ function detCard(x){
   h += '</div>';
   d.innerHTML = h;
 
-  var btns = document.createElement('div'); btns.className = 'rbtns';
-  var eb = document.createElement('button');
-  eb.className = 'btn ghost'; eb.textContent = '修改';
-  eb.onclick = function(){
-    if(d.querySelector('.edit')){ d.querySelector('.edit').remove(); return; }
-    d.appendChild(editPanel(x, d));
-  };
-  var db2 = document.createElement('button');
-  db2.className = 'btn no'; db2.textContent = '刪除';
-  db2.onclick = function(){
-    var msg = '確定刪除這筆紀錄？\n\n' + x.name + '　' + label + '　' + x.hours + ' 小時\n' +
-      when + '\n\n';
-    msg += x.status === 'approved'
-      ? '這筆已核准，刪除後系統會把時數自動還回去。' : '這筆沒有核准，不影響時數。';
-    if(!confirm(msg)) return;
-    db2.disabled = true; db2.textContent = '刪除中';
-    T.deleteRecord(x.kind, x.id).then(function(){
-      toast('已刪除','success'); return loadAll();
-    }).then(function(){ renderDetail(); })
-      .catch(function(e){ toast(e.message,'error'); db2.disabled=false; db2.textContent='刪除'; });
-  };
-  btns.appendChild(eb); btns.appendChild(db2);
-  d.appendChild(btns);
   return d;
 }
 
-function toLocal(v){
-  var dt = T.toDate(v);
-  if(isNaN(dt)) return '';
-  return dt.getFullYear() + '-' + pad2(dt.getMonth()+1) + '-' + pad2(dt.getDate()) +
-    'T' + pad2(dt.getHours()) + ':' + pad2(dt.getMinutes());
-}
-
-function editPanel(x, host){
-  var w = document.createElement('div'); w.className = 'edit';
-  var isLeave = x.kind === 'leave';
-  var h = '<div class="egrid">';
-  if(isLeave){
-    h += '<div><label>假別</label><select class="e-type">' +
-      T.LEAVE_TYPES.map(function(t){
-        return '<option value="' + t.id + '"' + (t.id===x.type?' selected':'') + '>' + t.label + '</option>';
-      }).join('') + '</select></div>';
-    h += '<div><label>狀態</label><select class="e-st">' +
-      ['pending','approved','rejected','cancelled'].map(function(s){
-        return '<option value="' + s + '"' + (s===x.status?' selected':'') + '>' +
-          T.STATUS_LABEL[s] + '</option>'; }).join('') + '</select></div>';
-    h += '<div><label>開始</label><input type="datetime-local" class="e-s" value="' + toLocal(x.startAt) + '"></div>';
-    h += '<div><label>結束</label><input type="datetime-local" class="e-e" value="' + toLocal(x.endAt) + '"></div>';
-    h += '<div><label>時數</label><input type="number" step="0.5" class="e-h" value="' + x.hours + '"></div>';
-    h += '<div><label>註記</label><input type="text" class="e-n" value="' + esc(x.adminNote||'') + '"></div>';
-  } else {
-    h += '<div><label>日期</label><input type="date" class="e-d" value="' + toLocal(x.date).slice(0,10) + '"></div>';
-    h += '<div><label>狀態</label><select class="e-st">' +
-      ['pending','approved','rejected','cancelled'].map(function(s){
-        return '<option value="' + s + '"' + (s===x.status?' selected':'') + '>' +
-          T.STATUS_LABEL[s] + '</option>'; }).join('') + '</select></div>';
-    h += '<div><label>開始</label><input type="datetime-local" class="e-s" value="' + toLocal(x.startAt) + '"></div>';
-    h += '<div><label>結束</label><input type="datetime-local" class="e-e" value="' + toLocal(x.endAt) + '"></div>';
-    h += '<div><label>時數</label><input type="number" step="0.5" class="e-h" value="' + x.hours + '"></div>';
-    h += '<div><label>核派加班（補休加倍）</label><select class="e-dp">' +
-      '<option value="0"' + (!x.isDispatch?' selected':'') + '>否</option>' +
-      '<option value="1"' + (x.isDispatch?' selected':'') + '>是</option></select></div>';
-    h += '<div style="grid-column:1/-1"><label>事由</label><input type="text" class="e-r" value="' +
-      esc(x.reason||'') + '"></div>';
-  }
-  h += '</div>';
-  w.innerHTML = h;
-
-  var foot = document.createElement('div'); foot.className = 'efoot';
-  var save = document.createElement('button'); save.className='btn'; save.textContent='儲存';
-  var cancel = document.createElement('button'); cancel.className='btn ghost'; cancel.textContent='取消';
-  cancel.onclick = function(){ w.remove(); };
-  save.onclick = function(){
-    var patch = {};
-    var q = function(c){ return w.querySelector(c); };
-    patch.status = q('.e-st').value;
-    patch.hours = parseFloat(q('.e-h').value);
-    if(isNaN(patch.hours)) return toast('時數要填數字','error');
-    if(isLeave){
-      patch.type = q('.e-type').value;
-      patch.startAt = new Date(q('.e-s').value);
-      patch.endAt   = new Date(q('.e-e').value);
-      patch.adminNote = q('.e-n').value;
-      if(isNaN(patch.startAt) || isNaN(patch.endAt)) return toast('日期時間格式不對','error');
-    } else {
-      patch.date = new Date(q('.e-d').value + 'T00:00:00');
-      patch.startAt = new Date(q('.e-s').value);
-      patch.endAt   = new Date(q('.e-e').value);
-      patch.isDispatch = q('.e-dp').value === '1';
-      patch.reason = q('.e-r').value;
-      if(isNaN(patch.date)) return toast('日期格式不對','error');
-    }
-    save.disabled = true; save.textContent = '儲存中…';
-    T.editRecord(x.kind, x.id, patch).then(function(){
-      toast('已更新','success'); return loadAll();
-    }).then(function(){ renderDetail(); })
-      .catch(function(e){
-        toast(e.message,'error'); save.disabled=false; save.textContent='儲存';
-      });
-  };
-  foot.appendChild(save); foot.appendChild(cancel);
-  w.appendChild(foot);
-  return w;
-}
-
+/* stats 是唯讀的，沒有編輯面板 */
 
 /* ---------- 加班分頁 ---------- */
 ['#otWho','#otRange'].forEach(function(i){ el(i).onchange = renderOt; });
@@ -1140,17 +1073,37 @@ el('#expBtn').onclick = function(){
       });
     })).then(function(bals){
       XLSX.utils.book_append_sheet(wb, sheet(bals, [12,26,14,12,10,14,12,10,12,12]), '目前時數');
+      /* 本月請假統計（給財務對薪水，不代算金額） */
       var now = new Date();
-      return T.computeAllSalary(now.getFullYear(), now.getMonth());
-    }).then(function(pay){
-      var rows = pay.map(function(r){
-        return { '姓名':r.name, '年月':r.year + '/' + r.month, '時薪':r.rate,
-          '底薪':r.baseSalary, '事假時數':r.hours.personal, '事假扣款':r.deductPersonal,
-          '病假半薪時數':r.sickHalfHours, '病假半薪扣款':r.deductSickHalf,
-          '病假全扣時數':r.sickFullHours, '病假全扣扣款':r.deductSickFull,
-          '扣款合計':r.deductTotal, '實領':r.finalPay };
+      var mKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+      var rows = S.accounts.map(function(a){
+        var row = { '姓名': a.name || a.email, '年月': mKey };
+        var total = 0;
+        T.LEAVE_TYPES.forEach(function(t){ row[t.label] = 0; });
+        S.leaves.forEach(function(x){
+          if(x.email !== a.email || x.status !== 'approved') return;
+          var segs = (x.segments && x.segments.length) ? x.segments
+                   : [{ ym: T.ym(x.startAt), hours: x.hours }];
+          segs.forEach(function(sg){
+            if(sg.ym !== mKey) return;
+            var lbl = T.leaveTypeLabel(x.type);
+            row[lbl] = roundHalf((row[lbl] || 0) + sg.hours);
+            total = roundHalf(total + sg.hours);
+          });
+        });
+        row['請假合計'] = total;
+        var oh = 0, ob = 0;
+        S.ots.forEach(function(x){
+          if(x.email !== a.email || x.status !== 'approved') return;
+          if((x.ym || T.ym(x.date)) !== mKey) return;
+          oh = roundHalf(oh + x.hours); ob = roundHalf(ob + (x.bonusHours||0));
+        });
+        row['加班時數'] = oh; row['核派加倍'] = ob; row['補休入帳'] = roundHalf(oh + ob);
+        return row;
       });
-      XLSX.utils.book_append_sheet(wb, sheet(rows, [12,10,8,10,10,10,12,12,12,12,10,10]), '本月薪資');
+      return Promise.resolve(rows);
+    }).then(function(rows){
+      XLSX.utils.book_append_sheet(wb, sheet(rows, [12,10,10,10,8,8,8,10,8,10,10,10,10]), '本月統計');
       var stamp = new Date();
       var fn = 'TPS請假加班紀錄_' + stamp.getFullYear() +
         String(stamp.getMonth()+1).padStart(2,'0') + String(stamp.getDate()).padStart(2,'0') + '.xlsx';
@@ -1201,6 +1154,84 @@ function otRow(x, mark){
     '審核人': x.reviewedBy || '', '註記': x.adminNote || '',
     '備註': mark
   };
+}
+
+
+/* ---------- 本月請假統計（給財務算薪水用） ---------- */
+function initMonSel(){
+  if(el('#monYear').options.length) return;
+  var now = new Date(), y = now.getFullYear(), o = '';
+  for(var i = y; i >= y - 2; i--) o += '<option value="' + i + '">' + i + ' 年</option>';
+  el('#monYear').innerHTML = o; el('#monYear').value = y;
+  var m = '';
+  for(var k = 1; k <= 12; k++) m += '<option value="' + (k-1) + '">' + k + ' 月</option>';
+  el('#monMonth').innerHTML = m; el('#monMonth').value = now.getMonth();
+  el('#monYear').onchange = renderMonth;
+  el('#monMonth').onchange = renderMonth;
+}
+
+function renderMonth(){
+  initMonSel();
+  var y = parseInt(el('#monYear').value), m = parseInt(el('#monMonth').value);
+  var mKey = y + '-' + pad2(m + 1);
+
+  var box = el('#monList'); box.innerHTML = '';
+  var any = false;
+  S.accounts.forEach(function(a){
+    var by = {}, total = 0;
+    S.leaves.forEach(function(x){
+      if(x.email !== a.email || x.status !== 'approved') return;
+      var segs = (x.segments && x.segments.length) ? x.segments
+               : [{ ym: T.ym(x.startAt), hours: x.hours }];
+      segs.forEach(function(sg){
+        if(sg.ym !== mKey) return;
+        by[x.type] = roundHalf((by[x.type] || 0) + sg.hours);
+        total = roundHalf(total + sg.hours);
+      });
+    });
+    var d = document.createElement('div'); d.className = 'mrow';
+    var h = '<div class="mhd"><b>' + esc(a.name || a.email) + '</b>' +
+      '<span class="tot">' + total + ' 小時</span></div>';
+    if(total > 0){
+      any = true;
+      h += '<div class="mtypes">' + T.LEAVE_TYPES.map(function(t){
+        var v = by[t.id] || 0;
+        return '<div class="mt' + (v ? '' : ' z') + '"><div class="k">' + t.label + '</div>' +
+          '<div class="v">' + v + '<small>小時</small></div></div>';
+      }).join('') + '</div>';
+    } else {
+      h += '<div class="mnone">這個月沒有請假。</div>';
+    }
+    d.innerHTML = h;
+    box.appendChild(d);
+  });
+  if(!S.accounts.length) box.innerHTML = '<div class="empty">還沒有人員資料。</div>';
+
+  /* 加班 */
+  var ob = el('#monOt'); ob.innerHTML = '';
+  S.accounts.forEach(function(a){
+    var hrs = 0, bonus = 0, cnt = 0, dispatch = 0;
+    S.ots.forEach(function(x){
+      if(x.email !== a.email || x.status !== 'approved') return;
+      if((x.ym || T.ym(x.date)) !== mKey) return;
+      hrs = roundHalf(hrs + x.hours);
+      bonus = roundHalf(bonus + (x.bonusHours || 0));
+      cnt++; if(x.isDispatch) dispatch++;
+    });
+    var d = document.createElement('div'); d.className = 'mrow';
+    d.innerHTML = '<div class="mhd"><b>' + esc(a.name || a.email) + '</b>' +
+      '<span class="tot">' + roundHalf(hrs + bonus) + ' 小時</span></div>' +
+      (cnt
+        ? '<div class="mtypes">' +
+          '<div class="mt"><div class="k">實際加班</div><div class="v">' + hrs + '<small>小時</small></div></div>' +
+          '<div class="mt' + (bonus?'':' z') + '"><div class="k">核派加倍</div><div class="v">+' + bonus + '<small>小時</small></div></div>' +
+          '<div class="mt"><div class="k">補休入帳</div><div class="v">' + roundHalf(hrs+bonus) + '<small>小時</small></div></div>' +
+          '<div class="mt"><div class="k">筆數</div><div class="v">' + cnt + '<small>筆</small></div></div>' +
+          '<div class="mt' + (dispatch?'':' z') + '"><div class="k">核派筆數</div><div class="v">' + dispatch + '<small>筆</small></div></div>' +
+          '</div>'
+        : '<div class="mnone">這個月沒有加班。</div>');
+    ob.appendChild(d);
+  });
 }
 
 </script>
