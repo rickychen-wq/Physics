@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '5.3.0';
+var SHARED_VERSION = '6.4.0';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -79,6 +79,15 @@ var MONTHLY_OT_CAP = 46;
 var WORK_WINDOWS   = [[9, 12], [13, 17]];
 var DEFAULT_PW     = '123456';
 var ADMIN_PASSWORD = '0423';
+var STATS_DEFAULT_PW = 'physics';   // stats 第一層預設密碼，之後可在後台改
+
+/* 後台密鑰。
+   刻意不寫在這裡 —— shared.js 是所有頁面都會載入的，
+   寫在這裡等於四位秘書打開開發者工具就拿得到。
+   改由 admin.html / stats.html 用 setAdminKey() 注入，
+   前台 index.html 永遠拿不到這把鑰匙。 */
+var ADMIN_KEY = null;
+function setAdminKey(k) { ADMIN_KEY = k || null; }
 var SALT           = 'tps.ps-taiwan.2026';
 
 var LEAVE_TYPES = [
@@ -97,8 +106,32 @@ var COL = {
   leave:'leaveRequests', overtime:'overtimeRequests', audit:'auditLog',
   calendar:'calendar',      // 國定假日與補班日
   notices:'notices',        // 站內通知
-  settlements:'settlements' // 到期折算薪資的紀錄
+  settlements:'settlements',// 到期折算薪資的紀錄
+  deleted:'deletedRecords', // 刪掉的紀錄留一份副本，匯出時要標注
+  push:'pushSubs',          // 手機推播訂閱
+  config:'config'           // 系統設定（stats 密碼等）
 };
+
+/* ---------- 薪資規則（秘書長 2026/08 說明） ----------
+   底薪 = 時薪 × 7 小時 × 23 天（固定天數，不隨當月上班日變動）
+   事假：扣全薪
+   病假：一年累計 210 小時以內扣半薪，超過的部分扣全薪
+   特休、補休、生理假、家庭照顧假：不扣薪                        */
+var SALARY = {
+  defaultRate: 300,        // 每小時，後台可個別調整
+  hoursPerDay: 7,
+  daysPerMonth: 23,
+  sickHalfPayCapHours: 210 // 一年 30 天 × 7 小時
+};
+
+/* ---------- 假別上限 ----------
+   生理假：每月 7 小時、每年 21 小時，超過直接擋下來            */
+var LEAVE_LIMITS = {
+  period: { monthHours: 7, yearHours: 21, label: '生理假' }
+};
+
+/* 加班事由至少要寫幾個字 */
+var OT_REASON_MIN = 10;
 
 /* 加班規則（依秘書長 2026/08 說明）
    ─ 第一小時必須整數，之後才能以 0.5 為單位
@@ -182,7 +215,7 @@ function setCalendarDay(dateStr, type, label) {
   if (type !== 'holiday' && type !== 'workday')
     return Promise.reject(new Error('類型只能是 holiday 或 workday'));
   return db.collection(COL.calendar).doc(dateStr)
-    .set({ type: type, label: label || '', updatedAt: serverTimestamp() })
+    .set(stamp({ type: type, label: label || '', updatedAt: serverTimestamp() }))
     .then(function () { _cal[dateStr] = type; })
     .then(function () { return writeAudit('calendar.set', dateStr, null, { type:type, label:label }); });
 }
@@ -323,11 +356,15 @@ function login(email, password) {
     return _me;
   });
 }
-/** 登入後例行檢查：行事曆、遞延到期、到職週年自動發特休 */
+/**
+ * 登入後的例行事情。
+ * 注意：遞延到期與自動發特休都會改到「時數」，
+ * 而安全規則只允許後台改時數，所以那兩件事挪到秘書長開後台時才跑
+ * （admin.html 開啟時會對全部人跑一次）。
+ * 這裡只載入行事曆。
+ */
 function afterLogin(em) {
   return loadCalendar()
-    .then(function () { return checkCarryExpiry(em); })
-    .then(function () { return autoGrantIfDue(em); })
     .then(function () { return db.collection(COL.accounts).doc(em).get(); })
     .then(function (sn) {
       // 背景跑完才回來，如果中間已經登出或換成別的身分就不要蓋掉
@@ -395,10 +432,17 @@ function upsertAccount(email, data) {
   var em = normEmail(email);
   if (!em) return Promise.reject(new Error('缺少信箱'));
   data.updatedAt = serverTimestamp();
-  return db.collection(COL.accounts).doc(em).set(data, { merge: true });
+  return db.collection(COL.accounts).doc(em).set(stamp(data), { merge: true });
 }
+/** 後台身分寫入時自動附上密鑰，一般使用者不附 */
+function withKey(data) {
+  var d = data || {};
+  if (isAdmin() && ADMIN_KEY) d.adminKey = ADMIN_KEY;
+  return d;
+}
+function stamp(data) { return withKey(data); }
 function setMerge(col, id, data) {
-  return db.collection(col).doc(id).set(data, { merge: true });
+  return db.collection(col).doc(id).set(stamp(data), { merge: true });
 }
 
 /** 後台重設密碼，一律回到預設 123456 */
@@ -673,6 +717,62 @@ function grantAnnual(email, newHours, carryExpire) {
 }
 
 /* ---------- 7. 請假 ---------- */
+
+/** 抓某人某年所有已核准／待審核的假單，用來算上限 */
+function myLeavesForLimit(email) {
+  return db.collection(COL.leave).where('email', '==', normEmail(email)).get()
+    .then(function (snap) {
+      return snapList(snap).filter(function (x) {
+        return x.status === STATUS.PENDING || x.status === STATUS.APPROVED;
+      });
+    }).catch(function () { return []; });
+}
+
+/**
+ * 假別上限檢查（目前只有生理假）。
+ * @returns null 代表可以送，否則回傳擋下來的原因
+ */
+function checkLeaveLimit(list, type, startAt, hours, excludeId) {
+  var rule = LEAVE_LIMITS[type];
+  if (!rule) return null;
+  var d = toDate(startAt);
+  var yKey = d.getFullYear(), mKey = ym(d);
+  var monthUsed = 0, yearUsed = 0;
+
+  list.forEach(function (x) {
+    if (x.type !== type) return;
+    if (excludeId && x.id === excludeId) return;
+    var segs = (x.segments && x.segments.length) ? x.segments
+             : [{ ym: ym(x.startAt), hours: x.hours }];
+    segs.forEach(function (sg) {
+      if (String(sg.ym).slice(0,4) !== String(yKey)) return;
+      yearUsed = roundHalf(yearUsed + sg.hours);
+      if (sg.ym === mKey) monthUsed = roundHalf(monthUsed + sg.hours);
+    });
+  });
+
+  var h = roundHalf(hours);
+  if (monthUsed + h > rule.monthHours)
+    return rule.label + '每個月最多 ' + rule.monthHours + ' 小時，' +
+      mKey.replace('-', ' 年 ') + ' 月已經用掉 ' + monthUsed + ' 小時，' +
+      '這次再請 ' + h + ' 小時會超過。請改請其他假別。';
+  if (yearUsed + h > rule.yearHours)
+    return rule.label + '每年最多 ' + rule.yearHours + ' 小時，' +
+      yKey + ' 年已經用掉 ' + yearUsed + ' 小時，' +
+      '這次再請 ' + h + ' 小時會超過。請改請其他假別。';
+  return null;
+}
+
+/** 可以當代理人的同事：在職、不是自己、不是測試帳號 */
+function proxyCandidates() {
+  var me = currentUser();
+  return listAccounts().then(function (list) {
+    return list.filter(function (a) {
+      return a.active !== false && a.isTest !== true &&
+             (!me || a.email !== me.email);
+    });
+  });
+}
 function submitLeave(o) {
   var u = currentUser();
   if (!u) return Promise.reject(new Error('尚未登入'));
@@ -691,7 +791,19 @@ function submitLeave(o) {
   var a = def.deducts === 'annual' ? h : 0;
   var c = def.deducts === 'comp'   ? h : 0;
 
-  return (a > 0 || c > 0 ? getBalance(u.email) : Promise.resolve(EMPTY_BAL))
+  var needsProxy = !!o.needsProxy;
+  var proxyEmail = normEmail(o.proxyEmail || '');
+  if (needsProxy && !proxyEmail)
+    return Promise.reject(new Error('請選擇職務代理人'));
+  if (needsProxy && proxyEmail === u.email)
+    return Promise.reject(new Error('不能選自己當代理人'));
+
+  return myLeavesForLimit(u.email)
+    .then(function (mine) {
+      var bad = checkLeaveLimit(mine, o.type, s, h);
+      if (bad) throw new Error(bad);
+      return (a > 0 || c > 0) ? getBalance(u.email) : EMPTY_BAL;
+    })
     .then(function (bal) {
       if (a > 0 && !splitAnnual(bal, a).enough)
         throw new Error('特休不足，目前剩 ' + (bal.annualRemaining || 0) + ' 小時');
@@ -704,7 +816,12 @@ function submitLeave(o) {
         hours: h, annualHours: a, compHours: c,
         segments: splitByMonth(s, e, h),
         isLate: !!o.isLate, lateReason: o.lateReason || '',
-        needsProxy: !!o.needsProxy, proxyName: o.proxyName || '',
+        needsProxy: needsProxy,
+        proxyEmail: needsProxy ? proxyEmail : null,
+        proxyName: o.proxyName || '',
+        /* 代理人要先確認，確認過才輪到秘書長 */
+        proxyStatus: needsProxy ? 'waiting' : null,
+        proxyRespondedAt: null, proxyNote: '',
         status: STATUS.PENDING,
         reviewedBy: null, reviewedAt: null, adminNote: '',
         createdAt: serverTimestamp(), updatedAt: serverTimestamp()
@@ -712,8 +829,71 @@ function submitLeave(o) {
     })
     .then(function (ref) {
       writeAudit('leave.submit', ref.id, null, { type: o.type, hours: h });
+      pushNotice('admin', '有新的請假申請',
+        u.name + ' 申請 ' + leaveTypeLabel(o.type) + ' ' + h + ' 小時（' +
+        fmtDate(s) + '）', 'leave');
+      if (needsProxy) {
+        pushNotice(proxyEmail, '有一張假單需要你確認代理',
+          u.name + ' 申請 ' + leaveTypeLabel(o.type) + ' ' + h + ' 小時（' +
+          fmtDate(s) + ' – ' + fmtDate(e) + '），指定你為職務代理人。' +
+          '請到「通知」頁確認或駁回。', 'proxy');
+      }
       return ref.id;
     });
+}
+
+/**
+ * 代理人回覆。
+ * 確認 → 假單繼續往秘書長那邊送
+ * 駁回 → 整張作廢，申請人要重開一張
+ */
+function respondProxy(leaveId, accept, note) {
+  var u = currentUser();
+  if (!u) return Promise.reject(new Error('尚未登入'));
+  var ref = db.collection(COL.leave).doc(leaveId);
+  return ref.get().then(function (sn) {
+    if (!sn.exists) throw new Error('假單不存在');
+    var L = sn.data();
+    if (L.proxyEmail !== u.email) throw new Error('這張假單不是指定你當代理人');
+    if (L.proxyStatus !== 'waiting') throw new Error('這張假單已經回覆過了');
+    if (L.status !== STATUS.PENDING) throw new Error('這張假單已經不在審核中');
+
+    var patch = {
+      proxyStatus: accept ? 'accepted' : 'declined',
+      proxyRespondedAt: serverTimestamp(),
+      proxyNote: note || '',
+      updatedAt: serverTimestamp()
+    };
+    if (!accept) {
+      patch.status = STATUS.CANCELLED;
+      patch.cancelledBy = u.name + '（代理人駁回）';
+      patch.cancelledAt = serverTimestamp();
+    }
+    return ref.set(patch, { merge: true }).then(function () {
+      return pushNotice(L.email,
+        accept ? '代理人已確認' : '代理人駁回了你的假單',
+        accept
+          ? u.name + ' 已確認擔任你的職務代理人（' + leaveTypeLabel(L.type) + ' ' +
+            fmtDate(L.startAt) + '），假單已送交秘書長審核。'
+          : u.name + ' 駁回了代理請求，這張假單已作廢。' +
+            (note ? '原因：' + note + '　' : '') + '請重新申請並選擇其他代理人。',
+        accept ? 'info' : 'proxy-declined');
+    }).then(function () {
+      return writeAudit('leave.proxy', leaveId, null,
+        { accept: !!accept, note: note || '', by: u.email });
+    });
+  });
+}
+
+/** 指定我當代理人、還在等我回覆的假單 */
+function watchProxyRequests(cb) {
+  var u = currentUser();
+  return db.collection(COL.leave).where('proxyEmail', '==', u.email)
+    .onSnapshot(function (s) {
+      cb(snapList(s).filter(function (x) {
+        return x.proxyStatus === 'waiting' && x.status === STATUS.PENDING;
+      }).sort(byOldest));
+    }, function (e) { _onError(e); });
 }
 
 function reviewLeave(leaveId, decision, adminNote) {
@@ -728,13 +908,15 @@ function reviewLeave(leaveId, decision, adminNote) {
       if (!sn.exists) throw new Error('假單不存在');
       var L = sn.data();
       if (L.status !== STATUS.PENDING) throw new Error('這張假單已經處理過了');
+      if (L.needsProxy && L.proxyStatus === 'waiting')
+        throw new Error('職務代理人還沒確認，等代理人回覆後才能審核');
       var stamp = {
         status: decision, reviewedBy: admin.name, reviewedAt: serverTimestamp(),
         adminNote: adminNote || '', updatedAt: serverTimestamp()
       };
       var needs = decision === STATUS.APPROVED &&
                   ((L.annualHours || 0) > 0 || (L.compHours || 0) > 0);
-      if (!needs) { tx.update(ref, stamp); return; }
+      if (!needs) { tx.update(ref, withKey(stamp)); return; }
 
       var balRef = db.collection(COL.balances).doc(L.email);
       return tx.get(balRef).then(function (bs) {
@@ -749,22 +931,31 @@ function reviewLeave(leaveId, decision, adminNote) {
         stamp.annualFromCurrent = sa.fromCurrent;
         stamp.compFromCarry     = sc.fromCarry;
         stamp.compFromCurrent   = sc.fromCurrent;
-        tx.update(ref, stamp);
+        tx.update(ref, withKey(stamp));
         var nAC = roundHalf(B.annualCarry   - sa.fromCarry);
         var nAU = roundHalf(B.annualCurrent - sa.fromCurrent);
         var nCC = roundHalf(B.compCarry     - sc.fromCarry);
         var nCU = roundHalf(B.compCurrent   - sc.fromCurrent);
-        tx.set(balRef, {
+        tx.set(balRef, withKey({
           annualCarry: nAC, annualCurrent: nAU, annualRemaining: roundHalf(nAC + nAU),
           compCarry: nCC,   compCurrent: nCU,   compRemaining:   roundHalf(nCC + nCU),
           annualUsedYTD: roundHalf((B.annualUsedYTD || 0) + (L.annualHours || 0)),
           compUsedYTD:   roundHalf((B.compUsedYTD   || 0) + (L.compHours   || 0)),
           updatedAt: serverTimestamp()
-        }, { merge: true });
+        }), { merge: true });
       });
     });
   }).then(function () {
     writeAudit('leave.review', leaveId, null, { decision: decision, adminNote: adminNote || '' });
+    return db.collection(COL.leave).doc(leaveId).get().then(function (sn) {
+      if (!sn.exists) return;
+      var L = sn.data();
+      pushNotice(L.email,
+        decision === STATUS.APPROVED ? '請假已核准' : '請假被駁回',
+        leaveTypeLabel(L.type) + ' ' + L.hours + ' 小時（' + fmtDate(L.startAt) + '）' +
+        (decision === STATUS.APPROVED ? ' 已核准。' : ' 沒有通過。') +
+        (adminNote ? '　' + adminNote : ''), 'result');
+    });
   });
 }
 
@@ -787,7 +978,7 @@ function cancelLeave(leaveId, reason) {
       };
       var needs = L.status === STATUS.APPROVED &&
                   ((L.annualHours || 0) > 0 || (L.compHours || 0) > 0);
-      if (!needs) { tx.update(ref, stamp); return; }
+      if (!needs) { tx.update(ref, withKey(stamp)); return; }
       var balRef = db.collection(COL.balances).doc(L.email);
       return tx.get(balRef).then(function (bs) {
         var B = normalizeBal(bs.exists ? bs.data() : null);
@@ -795,19 +986,146 @@ function cancelLeave(leaveId, reason) {
         var aU = (L.annualFromCurrent !== undefined) ? L.annualFromCurrent : (L.annualHours || 0);
         var cC = (L.compFromCarry     !== undefined) ? L.compFromCarry     : 0;
         var cU = (L.compFromCurrent   !== undefined) ? L.compFromCurrent   : (L.compHours || 0);
-        tx.update(ref, stamp);
+        tx.update(ref, withKey(stamp));
         var rAC = roundHalf(B.annualCarry + aC), rAU = roundHalf(B.annualCurrent + aU);
         var rCC = roundHalf(B.compCarry   + cC), rCU = roundHalf(B.compCurrent   + cU);
-        tx.set(balRef, {
+        tx.set(balRef, withKey({
           annualCarry: rAC, annualCurrent: rAU, annualRemaining: roundHalf(rAC + rAU),
           compCarry: rCC,   compCurrent: rCU,   compRemaining:   roundHalf(rCC + rCU),
           annualUsedYTD: roundHalf((B.annualUsedYTD || 0) - (L.annualHours || 0)),
           compUsedYTD:   roundHalf((B.compUsedYTD   || 0) - (L.compHours   || 0)),
           updatedAt: serverTimestamp()
-        }, { merge: true });
+        }), { merge: true });
       });
     });
   }).then(function () { writeAudit('leave.cancel', leaveId, null, { reason: reason || '' }); });
+}
+
+/**
+ * 修改待審中的假單（申請人自己改，不用撤銷重開）。
+ * 只有 pending 而且還沒被代理人處理過的才能改。
+ */
+function editMyPendingLeave(leaveId, patch) {
+  var u = currentUser();
+  if (!u) return Promise.reject(new Error('尚未登入'));
+  var ref = db.collection(COL.leave).doc(leaveId);
+
+  return ref.get().then(function (sn) {
+    if (!sn.exists) throw new Error('假單不存在');
+    var L = sn.data();
+    if (L.email !== u.email) throw new Error('這不是你的假單');
+    if (L.status !== STATUS.PENDING) throw new Error('只有還在等審核的假單可以修改');
+    if (L.needsProxy && L.proxyStatus === 'accepted')
+      throw new Error('代理人已經確認過了，要修改請先撤銷再重新申請');
+
+    var st = toDate(patch.startAt || L.startAt);
+    var en = toDate(patch.endAt   || L.endAt);
+    if (!(en > st)) throw new Error('結束時間必須晚於開始時間');
+    var h = roundHalf(patch.hours !== undefined ? patch.hours : L.hours);
+    if (!(h > 0)) throw new Error('時數必須大於 0');
+    var type = patch.type || L.type;
+    var def = leaveTypeDef(type);
+    if (!def) throw new Error('假別不存在');
+
+    return myLeavesForLimit(u.email).then(function (mine) {
+      var bad = checkLeaveLimit(mine, type, st, h, leaveId);
+      if (bad) throw new Error(bad);
+      var a = def.deducts === 'annual' ? h : 0;
+      var c = def.deducts === 'comp'   ? h : 0;
+      return getBalance(u.email).then(function (bal) {
+        if (a > 0 && !splitAnnual(bal, a).enough)
+          throw new Error('特休不足，目前剩 ' + bal.annualRemaining + ' 小時');
+        if (c > 0 && !splitComp(bal, c).enough)
+          throw new Error('補休不足，目前剩 ' + bal.compRemaining + ' 小時');
+        return ref.set({
+          type: type, otherType: patch.otherType !== undefined ? patch.otherType : L.otherType,
+          startAt: TS.fromDate(st), endAt: TS.fromDate(en),
+          hours: h, annualHours: a, compHours: c,
+          segments: splitByMonth(st, en, h),
+          editedByOwner: true, editedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      });
+    }).then(function () {
+      return writeAudit('leave.editOwn', leaveId, { hours: L.hours, type: L.type },
+        { hours: h, type: type });
+    });
+  });
+}
+
+/**
+ * 已核准的假單，申請人提出撤銷申請（不是直接撤，要秘書長同意）。
+ */
+function requestCancel(leaveId, reason) {
+  var u = currentUser();
+  if (!u) return Promise.reject(new Error('尚未登入'));
+  var r = String(reason || '').trim();
+  if (!r) return Promise.reject(new Error('請說明為什麼要撤銷'));
+  var ref = db.collection(COL.leave).doc(leaveId);
+  return ref.get().then(function (sn) {
+    if (!sn.exists) throw new Error('假單不存在');
+    var L = sn.data();
+    if (L.email !== u.email) throw new Error('這不是你的假單');
+    if (L.status !== STATUS.APPROVED) throw new Error('只有已核准的假單需要申請撤銷');
+    if (L.cancelRequest === 'waiting') throw new Error('已經提出過撤銷申請了');
+    return ref.set({
+      cancelRequest: 'waiting', cancelReason: r,
+      cancelRequestedAt: serverTimestamp(), updatedAt: serverTimestamp()
+    }, { merge: true });
+  }).then(function () {
+    return writeAudit('leave.requestCancel', leaveId, null, { reason: r });
+  });
+}
+
+/** 秘書長處理撤銷申請 */
+function reviewCancelRequest(leaveId, approve, note) {
+  if (!isAdmin()) return Promise.reject(new Error('只有秘書長可以處理'));
+  var ref = db.collection(COL.leave).doc(leaveId);
+  return ref.get().then(function (sn) {
+    if (!sn.exists) throw new Error('假單不存在');
+    var L = sn.data();
+    if (L.cancelRequest !== 'waiting') throw new Error('這張沒有待處理的撤銷申請');
+    if (!approve) {
+      return setMerge(COL.leave, leaveId, {
+        cancelRequest: 'rejected', cancelReviewNote: note || '',
+        updatedAt: serverTimestamp()
+      }).then(function () {
+        return pushNotice(L.email, '撤銷申請被駁回',
+          '你申請撤銷 ' + fmtDate(L.startAt) + ' 的' + leaveTypeLabel(L.type) +
+          '，秘書長沒有同意。' + (note ? '原因：' + note : ''), 'info');
+      });
+    }
+    /* 同意 → 走既有的撤銷流程，時數會自動退回 */
+    return cancelLeave(leaveId, '秘書長同意撤銷：' + (L.cancelReason || ''))
+      .then(function () {
+        return setMerge(COL.leave, leaveId, {
+          cancelRequest: 'approved', cancelReviewNote: note || ''
+        });
+      })
+      .then(function () {
+        return pushNotice(L.email, '撤銷申請已同意',
+          fmtDate(L.startAt) + ' 的' + leaveTypeLabel(L.type) + ' 已撤銷，時數已退回。', 'info');
+      });
+  }).then(function () {
+    return writeAudit('leave.reviewCancel', leaveId, null, { approve: !!approve, note: note || '' });
+  });
+}
+
+/** 待處理的撤銷申請（後台用） */
+function watchCancelRequests(cb) {
+  return db.collection(COL.leave).where('cancelRequest', '==', 'waiting')
+    .onSnapshot(function (s) { cb(snapList(s).sort(byOldest)); }, function (e) { _onError(e); });
+}
+
+/** 今天誰不在 */
+function whoIsOutToday(leaves, day) {
+  var d = toDate(day || new Date());
+  var d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var d1 = new Date(d0.getTime() + 86399000);
+  return (leaves || []).filter(function (x) {
+    if (x.status !== STATUS.APPROVED) return false;
+    return toDate(x.startAt) <= d1 && toDate(x.endAt) >= d0;
+  });
 }
 
 /* ---------- 8. 加班 ---------- */
@@ -837,6 +1155,10 @@ function submitOvertime(o) {
   if (!u) return Promise.reject(new Error('尚未登入'));
   if (!canApply()) return Promise.reject(new Error('這個帳號沒有申請權限'));
   var h = roundHalf(o.hours);
+  var reason = String(o.reason || '').trim();
+  if (reason.length < OT_REASON_MIN)
+    return Promise.reject(new Error('加班事由至少要寫 ' + OT_REASON_MIN +
+      ' 個字，目前只有 ' + reason.length + ' 個字。請具體說明處理什麼工作。'));
   var month = ym(o.date);
   return dayOvertimeHours(u.email, dateKey(o.date)).then(function (sameDay) {
     var bad = validateOvertime(h, o.date, sameDay);
@@ -852,11 +1174,14 @@ function submitOvertime(o) {
       hours: h, bonusHours: 0, isDispatch: false, ym: month,
       dateKey: dateKey(o.date),
       isWeekend: !isWorkingDay(toDate(o.date)),
-      reason: o.reason || '', overCapWarning: over,
+      reason: reason, overCapWarning: over,
       status: STATUS.PENDING, reviewedBy: null, reviewedAt: null, adminNote: '',
       createdAt: serverTimestamp(), updatedAt: serverTimestamp()
     }).then(function (ref) {
       writeAudit('overtime.submit', ref.id, null, { hours: h });
+      pushNotice('admin', '有新的加班申請',
+        u.name + ' 申請加班 ' + h + ' 小時（' + fmtDate(o.date) + '）' +
+        (over ? '　本月已超過 46 小時' : ''), 'overtime');
       return { id: ref.id, overCapWarning: over, monthlyUsed: used + h };
     });
   });
@@ -894,7 +1219,7 @@ function reviewOvertime(otId, decision, adminNote, opt) {
         status: decision, reviewedBy: admin.name, reviewedAt: serverTimestamp(),
         adminNote: adminNote || '', updatedAt: serverTimestamp()
       };
-      if (decision !== STATUS.APPROVED) { tx.update(ref, stamp); return; }
+      if (decision !== STATUS.APPROVED) { tx.update(ref, withKey(stamp)); return; }
       var dispatch = !!opt.isDispatch;
       var bonus = dispatch ? roundHalf(O.hours * (OT_RULES.dispatchMultiplier - 1)) : 0;
       stamp.isDispatch = dispatch;
@@ -903,18 +1228,28 @@ function reviewOvertime(otId, decision, adminNote, opt) {
       return tx.get(balRef).then(function (bs) {
         var B = normalizeBal(bs.exists ? bs.data() : null);
         var gain = roundHalf(O.hours + bonus);
-        tx.update(ref, stamp);
+        tx.update(ref, withKey(stamp));
         var nCU = roundHalf((B.compCurrent || 0) + gain);
-        tx.set(balRef, {
+        tx.set(balRef, withKey({
           compCurrent: nCU,
           compRemaining: roundHalf((B.compCarry || 0) + nCU),
           compEarnedYTD: roundHalf((B.compEarnedYTD || 0) + gain),
           updatedAt: serverTimestamp()
-        }, { merge: true });
+        }), { merge: true });
       });
     });
   }).then(function () {
     writeAudit('overtime.review', otId, null, { decision: decision, adminNote: adminNote || '' });
+    return db.collection(COL.overtime).doc(otId).get().then(function (sn) {
+      if (!sn.exists) return;
+      var O = sn.data();
+      pushNotice(O.email,
+        decision === STATUS.APPROVED ? '加班已核准' : '加班被駁回',
+        fmtDate(O.date) + ' 加班 ' + O.hours + ' 小時' +
+        (decision === STATUS.APPROVED
+          ? '，補休增加 ' + roundHalf(O.hours + (O.bonusHours || 0)) + ' 小時。'
+          : ' 沒有通過。') + (adminNote ? '　' + adminNote : ''), 'result');
+    });
   });
 }
 
@@ -1021,8 +1356,25 @@ function deleteRecord(kind, id) {
       });
     }).then(function () { return R; });
   }).then(function (R) {
-    return writeAudit('record.delete', id, R || null, { kind: kind });
+    /* 留一份副本，匯出時才知道哪些被刪過 */
+    return ref.get().then(function (sn2) {
+      var data = sn2.exists ? sn2.data() : (R || {});
+      data.originalId = id;
+      data.recordKind = kind;
+      data.deletedAt = serverTimestamp();
+      data.deletedBy = currentUser().name;
+      return db.collection(COL.deleted).add(stamp(data));
+    }).then(function () {
+      return writeAudit('record.delete', id, R || null, { kind: kind });
+    });
   }).then(function () { return ref.delete(); });
+}
+
+/** 已刪除紀錄的副本 */
+function listDeleted() {
+  return db.collection(COL.deleted).get().then(function (s) {
+    return snapList(s).sort(function (a, b) { return ms(b.deletedAt) - ms(a.deletedAt); });
+  }).catch(function () { return []; });
 }
 
 /**
@@ -1133,7 +1485,7 @@ function editRecord(kind, id, patch) {
         compRemaining: roundHalf(b.compCarry + b.compCurrent),
         annualUsedYTD: b.annualUsedYTD, compUsedYTD: b.compUsedYTD,
         compEarnedYTD: b.compEarnedYTD, updatedAt: serverTimestamp()
-      }).then(function () { return ref.set(N); });
+      }).then(function () { return ref.set(stamp(N)); });
     }).then(function () {
       return writeAudit('record.edit', id, O, patch);
     });
@@ -1161,11 +1513,140 @@ function monthOvertimeHours(ots, month) {
   return sum;
 }
 
+/* ---------- 手機推播 ----------
+   流程：手機訂閱 → 訂閱資料存進 Firestore →
+        有事發生時呼叫 Cloudflare Worker → Worker 簽章後送到 Apple/Google → 手機跳通知
+   iOS 限制：必須「加入主畫面」後從圖示開啟，而且要 iOS 16.4 以上。   */
+var PUSH_ENDPOINT = 'https://tps-push.chenfdhs453.workers.dev';
+var VAPID_PUBLIC_KEY = 'BL3w2npcbn59QATyEsVyimcceYaPTzjgew85L5K7AWMHOHCl06QCgz6E3oZITpGvGNl8TPdwFh0fGbzG1F1_0ZM';
+
+/** 這台裝置能不能收推播，回傳原因才能告訴使用者要怎麼做 */
+function pushSupport() {
+  var hasApi = ('serviceWorker' in navigator)
+            && (typeof PushManager !== 'undefined')
+            && (typeof Notification !== 'undefined');
+  var standalone = (navigator.standalone === true)
+            || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  var ios = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (!hasApi)            return { ok:false, why:'unsupported' };
+  if (ios && !standalone) return { ok:false, why:'needHomeScreen' };
+  return { ok:true };
+}
+
+function b64uToU8(s) {
+  var pad = '='.repeat((4 - s.length % 4) % 4);
+  var raw = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  var out = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+/**
+ * 開啟推播。一定要從使用者的點擊事件裡呼叫，否則 iOS 會靜默失敗。
+ * @param scope 收件對象：秘書填自己的信箱、後台填 'admin'、檢視台填 'stats'
+ */
+function subscribePush(scope, label) {
+  var sup = pushSupport();
+  if (!sup.ok) {
+    return Promise.reject(new Error(sup.why === 'needHomeScreen'
+      ? '請先用 Safari 的「分享 → 加入主畫面」，再從主畫面的圖示打開這個網站，才能開啟通知。'
+      : '這個瀏覽器不支援通知功能。'));
+  }
+  return navigator.serviceWorker.register('sw.js', { scope: './' })
+    .then(function () { return navigator.serviceWorker.ready; })
+    .then(function (reg) {
+      return Notification.requestPermission().then(function (perm) {
+        if (perm !== 'granted') throw new Error(perm === 'denied'
+          ? '通知被拒絕了。要重新開啟請到「設定 → 通知」找這個 App 打開。'
+          : '沒有取得通知權限。');
+        return reg.pushManager.getSubscription().then(function (sub) {
+          return sub || reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: b64uToU8(VAPID_PUBLIC_KEY)
+          });
+        });
+      });
+    })
+    .then(function (sub) {
+      var j = sub.toJSON();
+      var id = sha256(j.endpoint).slice(0, 24);     // 同一台裝置不會重複建立
+      return setMerge(COL.push, id, {
+        scope: normEmail(scope), endpoint: j.endpoint, keys: j.keys,
+        label: label || '', at: serverTimestamp()
+      }).then(function () { return id; });
+    });
+}
+
+/** 關閉這台裝置的推播 */
+function unsubscribePush() {
+  if (!('serviceWorker' in navigator)) return Promise.resolve();
+  return navigator.serviceWorker.ready.then(function (reg) {
+    return reg.pushManager.getSubscription();
+  }).then(function (sub) {
+    if (!sub) return null;
+    var id = sha256(sub.toJSON().endpoint).slice(0, 24);
+    return db.collection(COL.push).doc(id).delete()
+      .then(function () { return sub.unsubscribe(); });
+  }).catch(function (e) { console.warn('[TPS] 取消訂閱', e); });
+}
+
+/** 這台裝置目前有沒有訂閱 */
+function pushStatus() {
+  if (!('serviceWorker' in navigator)) return Promise.resolve({ on:false });
+  return navigator.serviceWorker.getRegistration().then(function (reg) {
+    if (!reg) return { on:false };
+    return reg.pushManager.getSubscription().then(function (sub) {
+      return { on: !!sub };
+    });
+  }).catch(function () { return { on:false }; });
+}
+
+function getSubs(scope) {
+  return db.collection(COL.push).where('scope', '==', normEmail(scope)).get()
+    .then(function (s) {
+      return snapList(s).filter(function (x) { return x.endpoint && x.keys; });
+    }).catch(function () { return []; });
+}
+
+/**
+ * 送推播。絕不 throw —— 推播失敗不可以害到請假流程失敗。
+ */
+function sendPush(scope, title, body, url, tag) {
+  return getSubs(scope).then(function (subs) {
+    if (!subs.length) return { ok:false, skipped:true };
+    return fetch(PUSH_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subscriptions: subs.map(function (s) { return { endpoint:s.endpoint, keys:s.keys }; }),
+        title: title, body: body, url: url || 'index.html', tag: tag || 'tps'
+      })
+    }).then(function (r) { return r.json(); })
+      .then(function (res) {
+        /* 對方已取消訂閱的，順手清掉 */
+        (res.results || []).forEach(function (x) {
+          if (!x.gone) return;
+          var dead = subs.filter(function (s) { return s.endpoint === x.endpoint; })[0];
+          if (dead) db.collection(COL.push).doc(dead.id).delete().catch(function(){});
+        });
+        return res;
+      });
+  }).catch(function (e) {
+    console.warn('[TPS] 推播失敗（不影響主流程）', e);
+    return { ok:false, error:String(e) };
+  });
+}
+
 /* ---------- 站內通知 ---------- */
 function pushNotice(email, title, body, kind) {
+  var em = normEmail(email);
+  /* 站內通知一定要寫進去；手機推播是加分的，失敗不影響 */
   return db.collection(COL.notices).add({
-    email: normEmail(email), title: title, body: body || '',
+    email: em, title: title, body: body || '',
     kind: kind || 'info', read: false, createdAt: serverTimestamp()
+  }).then(function () {
+    var url = (em === 'admin') ? 'admin.html' : (em === 'stats' ? 'stats.html' : 'index.html');
+    sendPush(em, title, body || '', url, kind || 'tps');
   }).catch(function (e) { console.warn('[TPS] 通知寫入失敗', e); });
 }
 function watchMyNotices(cb) {
@@ -1179,6 +1660,145 @@ function markNoticeRead(id) {
 function markAllNoticesRead(list) {
   return Promise.all((list || []).filter(function (n) { return !n.read; })
     .map(function (n) { return markNoticeRead(n.id); }));
+}
+
+/* ---------- 薪資 ---------- */
+/** 這個月有幾個上班日、到今天為止過了幾天（依行事曆，補班日算上班） */
+function workdaysOfMonth(y, m, until) {
+  var days = new Date(y, m + 1, 0).getDate(), total = 0, passed = 0;
+  var stop = until ? toDate(until) : null;
+  for (var d = 1; d <= days; d++) {
+    var dt = new Date(y, m, d);
+    if (!isWorkingDay(dt)) continue;
+    total++;
+    if (stop && dt <= stop) passed++;
+  }
+  return { total: total, passed: passed };
+}
+
+/**
+ * 算某人某個月的薪水。
+ * 底薪固定 = 時薪 × 7 × 23（不隨當月上班日變動，依秘書長說明）
+ * 事假扣全薪；病假一年 210 小時內扣半薪、超過扣全薪。
+ */
+function computeMonthSalary(email, year, month, allLeaves, account) {
+  var em = normEmail(email);
+  var rate = (account && account.hourlyRate) || SALARY.defaultRate;
+  var base = roundHalf(rate * SALARY.hoursPerDay * SALARY.daysPerMonth);
+  var mKey = year + '-' + pad(month + 1);
+
+  /* 這個月各假別用了幾小時（只算已核准，跨月依 segments） */
+  var byType = {}, mine = [];
+  (allLeaves || []).forEach(function (x) {
+    if (x.email !== em || x.status !== STATUS.APPROVED) return;
+    mine.push(x);
+    var segs = (x.segments && x.segments.length) ? x.segments
+             : [{ ym: ym(x.startAt), hours: x.hours }];
+    segs.forEach(function (sg) {
+      if (sg.ym !== mKey) return;
+      byType[x.type] = roundHalf((byType[x.type] || 0) + sg.hours);
+    });
+  });
+
+  /* 病假要看整年累計，才知道哪些落在半薪、哪些超過 210 小時 */
+  var sickBefore = 0;
+  mine.forEach(function (x) {
+    if (x.type !== 'sick') return;
+    var segs = (x.segments && x.segments.length) ? x.segments
+             : [{ ym: ym(x.startAt), hours: x.hours }];
+    segs.forEach(function (sg) {
+      if (String(sg.ym).slice(0,4) !== String(year)) return;
+      if (sg.ym < mKey) sickBefore = roundHalf(sickBefore + sg.hours);
+    });
+  });
+
+  var sickThis = byType.sick || 0;
+  var cap = SALARY.sickHalfPayCapHours;
+  var halfHours = Math.max(0, Math.min(sickThis, cap - sickBefore));
+  var fullHours = roundHalf(sickThis - halfHours);
+
+  var personal = byType.personal || 0;
+  var deductPersonal = roundHalf(personal * rate);
+  var deductSickHalf = roundHalf(halfHours * rate * 0.5);
+  var deductSickFull = roundHalf(fullHours * rate);
+  var deduct = roundHalf(deductPersonal + deductSickHalf + deductSickFull);
+
+  /* 到今天為止已經做了幾天（跨月時只算本月） */
+  var now = new Date();
+  var isThisMonth = (now.getFullYear() === year && now.getMonth() === month);
+  var wd = workdaysOfMonth(year, month, isThisMonth ? now : null);
+  var ratio = isThisMonth ? (wd.total ? wd.passed / wd.total : 0) : 1;
+
+  return {
+    email: em,
+    name: account ? account.name : em,
+    year: year, month: month + 1,
+    rate: rate,
+    baseSalary: base,
+    workdays: wd.total,
+    workdaysPassed: isThisMonth ? wd.passed : wd.total,
+    hours: {
+      personal: personal, sick: sickThis,
+      annual: byType.annual || 0, comp: byType.comp || 0,
+      period: byType.period || 0, family: byType.family || 0,
+      other: byType.other || 0
+    },
+    sickHalfHours: halfHours,
+    sickFullHours: fullHours,
+    sickYearBefore: sickBefore,
+    deductPersonal: deductPersonal,
+    deductSickHalf: deductSickHalf,
+    deductSickFull: deductSickFull,
+    deductTotal: deduct,
+    /* 到今天為止累積（照已過的上班日比例，再扣掉已發生的扣款） */
+    accruedNow: roundHalf(Math.max(0, base * ratio - deduct)),
+    /* 從現在起都不再請假的話，月底可領 */
+    ifNoMoreLeave: roundHalf(Math.max(0, base - deduct)),
+    /* 這個月最後實領（整月結算） */
+    finalPay: roundHalf(Math.max(0, base - deduct))
+  };
+}
+
+/** 一次算全部人 */
+function computeAllSalary(year, month) {
+  return Promise.all([
+    listAccounts(),
+    db.collection(COL.leave).get().then(snapList)
+  ]).then(function (r) {
+    var accs = r[0], leaves = r[1];
+    return accs.map(function (a) {
+      return computeMonthSalary(a.email, year, month, leaves, a);
+    });
+  });
+}
+
+/* ---------- 系統設定（stats 密碼） ---------- */
+function getConfig(key) {
+  return db.collection(COL.config).doc(key).get().then(function (s) {
+    return s.exists ? s.data() : null;
+  }).catch(function () { return null; });
+}
+/** stats 第一層密碼，沒設定過就用預設的 physics */
+function getStatsPassword() {
+  return getConfig('stats').then(function (c) {
+    return { pw: (c && c.pw) || STATS_DEFAULT_PW, epoch: (c && c.epoch) || 0 };
+  });
+}
+/**
+ * 改 stats 密碼。改完 epoch +1，
+ * 所有裝置的通知會被強制關閉，要重新輸入新密碼才會再開。
+ */
+function setStatsPassword(newPw) {
+  if (!isAdmin()) return Promise.reject(new Error('只有秘書長可以修改'));
+  var p = String(newPw || '').trim();
+  if (p.length < 4) return Promise.reject(new Error('密碼至少 4 個字元'));
+  return getStatsPassword().then(function (c) {
+    return setMerge(COL.config, 'stats', {
+      pw: p, epoch: (c.epoch || 0) + 1, changedAt: serverTimestamp()
+    }).then(function () {
+      return writeAudit('config.statsPw', 'stats', { epoch: c.epoch }, { epoch: (c.epoch||0)+1 });
+    }).then(function () { return { epoch: (c.epoch || 0) + 1 }; });
+  });
 }
 
 /* ---------- 11. 稽核 ---------- */
@@ -1220,7 +1840,7 @@ console.info('[TPS] shared.js v' + SHARED_VERSION + ' loaded');
 return {
   SHARED_VERSION: SHARED_VERSION, db: db, serverTimestamp: serverTimestamp, Timestamp: TS,
   HOURS_PER_DAY: HOURS_PER_DAY, MONTHLY_OT_CAP: MONTHLY_OT_CAP,
-  DEFAULT_PW: DEFAULT_PW, ADMIN_PASSWORD: ADMIN_PASSWORD,
+  DEFAULT_PW: DEFAULT_PW, ADMIN_PASSWORD: ADMIN_PASSWORD, STATS_DEFAULT_PW: STATS_DEFAULT_PW,
   LEAVE_TYPES: LEAVE_TYPES, STATUS: STATUS, STATUS_LABEL: STATUS_LABEL, COL: COL,
   leaveTypeLabel: leaveTypeLabel, leaveTypeDef: leaveTypeDef,
   toDate: toDate, ym: ym, fmtDate: fmtDate, fmtTime: fmtTime,
@@ -1243,17 +1863,30 @@ return {
   isWorkingDay: isWorkingDay, listCalendar: listCalendar,
   setCalendarDay: setCalendarDay, deleteCalendarDay: deleteCalendarDay, dateKey: dateKey,
   pushNotice: pushNotice, watchMyNotices: watchMyNotices,
+  pushSupport: pushSupport, subscribePush: subscribePush,
+  unsubscribePush: unsubscribePush, pushStatus: pushStatus,
+  sendPush: sendPush, getSubs: getSubs, PUSH_ENDPOINT: PUSH_ENDPOINT,
   markNoticeRead: markNoticeRead, markAllNoticesRead: markAllNoticesRead,
   dayOvertimeHours: dayOvertimeHours,
   submitLeave: submitLeave, reviewLeave: reviewLeave, cancelLeave: cancelLeave,
+  checkLeaveLimit: checkLeaveLimit, myLeavesForLimit: myLeavesForLimit,
+  proxyCandidates: proxyCandidates, respondProxy: respondProxy,
+  editMyPendingLeave: editMyPendingLeave, requestCancel: requestCancel,
+  reviewCancelRequest: reviewCancelRequest, watchCancelRequests: watchCancelRequests,
+  whoIsOutToday: whoIsOutToday,
+  watchProxyRequests: watchProxyRequests,
+  LEAVE_LIMITS: LEAVE_LIMITS, SALARY: SALARY, OT_REASON_MIN: OT_REASON_MIN,
   submitOvertime: submitOvertime, reviewOvertime: reviewOvertime,
   watchMyLeaves: watchMyLeaves, watchMyOvertime: watchMyOvertime,
   watchPendingLeaves: watchPendingLeaves, watchPendingOvertime: watchPendingOvertime,
   fetchAllRecords: fetchAllRecords, fetchAudit: fetchAudit,
-  deleteRecord: deleteRecord, editRecord: editRecord,
+  deleteRecord: deleteRecord, editRecord: editRecord, listDeleted: listDeleted,
+  computeMonthSalary: computeMonthSalary, computeAllSalary: computeAllSalary,
+  workdaysOfMonth: workdaysOfMonth,
+  getConfig: getConfig, getStatsPassword: getStatsPassword, setStatsPassword: setStatsPassword,
   monthLeaveHours: monthLeaveHours, monthOvertimeHours: monthOvertimeHours,
   writeAudit: writeAudit, setErrorHandler: setErrorHandler,
-  _sha256: sha256, _hashPw: hashPw,
+  _sha256: sha256, _hashPw: hashPw, setAdminKey: setAdminKey,
   el: el, esc: esc, toast: toast
 };
 })();
