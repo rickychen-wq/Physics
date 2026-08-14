@@ -144,28 +144,73 @@ main{max-width:1060px;margin:0 auto;
 .chd select{width:auto;min-width:110px;padding:9px 32px 9px 12px;font-size:14px}
 .cbd{padding:24px}
 
+/* ===== 第一層：手機優先 ===== */
+.mnav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.mnav button{width:46px;height:46px;flex:none;border:none;border-radius:12px;
+  background:var(--card);color:var(--dim);font-size:24px;line-height:1;cursor:pointer;padding:0;
+  box-shadow:0 0 0 1px rgba(255,255,255,.06)}
+.mnav button:active{color:var(--gold-b)}
+.mtitle{flex:1;text-align:center;font-size:19px;font-weight:700;font-family:var(--mono);
+  letter-spacing:.02em}
+.cal-card{padding:14px 12px}
+.legend2{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;
+  margin-top:14px;font-size:11px;color:var(--dim2)}
+.legend2 span{display:flex;align-items:center;gap:5px}
+.legend2 i{width:9px;height:9px;border-radius:50%;display:block}
+.xbtn{margin-left:auto;background:none;border:none;color:var(--dim);font-size:17px;
+  cursor:pointer;padding:4px 8px;width:auto}
+
+/* 舊的桌機月曆樣式（第二層還在用） */
 /* 月曆 */
-.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
-.mgrid .wd{text-align:center;font-size:11px;color:var(--dim2);padding:6px 0;font-family:var(--mono)}
-.day{aspect-ratio:1;border-radius:10px;background:var(--bg);padding:8px;position:relative;
-  box-shadow:0 0 0 1px rgba(255,255,255,.04);display:flex;flex-direction:column;gap:3px;overflow:hidden}
-.day.pad{background:none;box-shadow:none;opacity:.2}
-.day .n{font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.mgrid .wd{text-align:center;font-size:11px;color:var(--dim2);padding:5px 0;font-family:var(--mono)}
+.day{aspect-ratio:1;border-radius:10px;background:var(--bg);padding:6px 4px;position:relative;
+  box-shadow:0 0 0 1px rgba(255,255,255,.04);display:flex;flex-direction:column;
+  align-items:center;gap:4px;cursor:pointer;border:none;width:100%}
+.day.pad{background:none;box-shadow:none;opacity:.18;cursor:default}
+.day .n{font-family:var(--mono);font-size:13px;color:var(--dim);line-height:1.2}
 .day.off .n{color:var(--dim2)}
-.day.hol{background:rgba(224,96,90,.07)} .day.hol .n{color:#F5928C}
-.day.wkd{background:rgba(79,190,129,.07)} .day.wkd .n{color:var(--ok)}
+.day.hol{background:rgba(224,96,90,.08)} .day.hol .n{color:#F5928C}
+.day.wkd{background:rgba(79,190,129,.08)} .day.wkd .n{color:var(--ok)}
 .day.today{box-shadow:0 0 0 1.5px var(--gold)}
-.pill{font-size:10px;padding:2px 6px;border-radius:5px;white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;font-weight:600;line-height:1.5}
+.day.picked{background:rgba(217,169,60,.16);box-shadow:0 0 0 1.5px var(--gold-b)}
+.dots{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-content:flex-start}
+.dot{width:7px;height:7px;border-radius:50%;display:block}
+.dot.approved{background:#4FBE81}
+.dot.pending{background:#E5A83F}
+.dot.rejected{background:#E0605A}
+.dot.cancelled{background:#5C6478}
+.dot.ot{background:#7FB8E8}
+.more{font-size:9px;color:var(--dim2);font-family:var(--mono);line-height:1}
+
+/* 電腦上格子夠大，直接顯示名字 */
+@media(min-width:820px){
+  .mgrid{gap:7px}
+  .day{padding:8px;align-items:stretch}
+  .day .n{font-size:12.5px;text-align:left}
+  .dots{display:none}
+  .pill{font-size:10px;padding:2px 6px;border-radius:5px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;font-weight:600;line-height:1.5;display:block}
+}
+.pill{display:none}
 .pill.approved{background:rgba(79,190,129,.2);color:#8FE0B2}
 .pill.pending{background:rgba(229,168,63,.2);color:#F0C878}
 .pill.rejected{background:rgba(224,96,90,.18);color:#F5928C;text-decoration:line-through}
 .pill.cancelled{background:rgba(141,150,172,.15);color:var(--dim2);text-decoration:line-through}
-@media(max-width:700px){ .day{aspect-ratio:auto;min-height:74px} .day .n{font-size:11.5px} }
+.pill.ot{background:rgba(127,184,232,.2);color:#A9D2F0}
 
 /* 申請清單 */
-.appl{padding:16px 24px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;
-  align-items:center;gap:16px;flex-wrap:wrap}
+.appl{padding:15px 18px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;
+  align-items:center;gap:12px;flex-wrap:wrap}
+.appl .rsn{width:100%;font-size:12.5px;color:var(--dim);line-height:1.6;margin-top:2px}
+@media(max-width:700px){
+  main{padding-left:calc(14px + var(--sl));padding-right:calc(14px + var(--sr))}
+  .nav{padding-left:calc(14px + var(--sl));padding-right:calc(14px + var(--sr))}
+  .tin{padding-left:calc(14px + var(--sl));padding-right:calc(14px + var(--sr))}
+  .chd{padding:15px 18px}
+  .appl .who{min-width:0}
+  .appl .st{margin-left:auto}
+}
 .appl:last-child{border-bottom:none}
 .appl .who{font-weight:700;font-size:15.5px;min-width:80px}
 .appl .rng{font-family:var(--mono);font-size:13.5px;color:var(--txt)}
@@ -261,28 +306,38 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 <main>
   <!-- 第一層：月曆 -->
   <div id="pCal">
-    <div class="card">
-      <div class="chd">
-        <h2 id="calTitle">—</h2>
-        <div class="sp">
-          <button class="btn ghost" id="mPrev" style="width:auto;padding:9px 16px">上個月</button>
-          <button class="btn ghost" id="mNext" style="width:auto;padding:9px 16px">下個月</button>
-        </div>
-      </div>
-      <div class="cbd">
-        <div class="mgrid" id="wdHead"></div>
-        <div class="mgrid" id="mBody"></div>
-        <div class="legend" style="padding:18px 0 0">
-          <span><i style="background:#4FBE81"></i>已同意</span>
-          <span><i style="background:#E5A83F"></i>待審核</span>
-          <span><i style="background:#E0605A"></i>不同意</span>
-          <span><i style="background:#5C6478"></i>已撤銷</span>
-        </div>
+    <div class="mnav">
+      <button id="mPrev" aria-label="上個月">‹</button>
+      <div class="mtitle" id="calTitle">—</div>
+      <button id="mNext" aria-label="下個月">›</button>
+    </div>
+
+    <div class="card cal-card">
+      <div class="mgrid" id="wdHead"></div>
+      <div class="mgrid" id="mBody"></div>
+      <div class="legend2">
+        <span><i style="background:#4FBE81"></i>已同意</span>
+        <span><i style="background:#E5A83F"></i>待審核</span>
+        <span><i style="background:#E0605A"></i>不同意</span>
+        <span><i style="background:#5C6478"></i>已撤銷</span>
+        <span><i style="background:#7FB8E8"></i>加班</span>
       </div>
     </div>
+
+    <div class="card hide" id="dayCard">
+      <div class="chd"><h2 id="dayTitle">—</h2>
+        <button class="xbtn" id="dayClose">✕</button></div>
+      <div id="dayList"></div>
+    </div>
+
     <div class="card">
-      <div class="chd"><h2>本月申請</h2><span class="unit" id="applCnt"></span></div>
+      <div class="chd"><h2>本月請假</h2><span class="unit" id="applCnt"></span></div>
       <div id="applList"><div class="empty">這個月沒有請假申請。</div></div>
+    </div>
+
+    <div class="card">
+      <div class="chd"><h2>本月加班</h2><span class="unit" id="otmCnt"></span></div>
+      <div id="otmList"><div class="empty">這個月沒有加班申請。</div></div>
     </div>
   </div>
 
@@ -396,7 +451,7 @@ var T = window.TPS, el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.round
 T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'error'); });
 
 var LV2_KEY = 'tps.stats.lv2';
-var S = { page:'Cal', lv2:false, statsPw:'physics', statsEpoch:0, y:new Date().getFullYear(), m:new Date().getMonth(),
+var S = { page:'Cal', lv2:false, picked:null, statsPw:'physics', statsEpoch:0, y:new Date().getFullYear(), m:new Date().getMonth(),
           accounts:[], leaves:[], ots:[], loaded:false };
 
 function showErr(id,msg){ var b=el('#'+id);
@@ -504,8 +559,10 @@ function renderAll(){ renderCal(); if(S.page!=='Cal') go(S.page); }
 /* ---------- 月曆（第一層看得到的全部） ---------- */
 var WD = ['日','一','二','三','四','五','六'];
 el('#wdHead').innerHTML = WD.map(function(w){ return '<div class="wd">' + w + '</div>'; }).join('');
-el('#mPrev').onclick = function(){ S.m--; if(S.m<0){S.m=11;S.y--;} renderCal(); };
-el('#mNext').onclick = function(){ S.m++; if(S.m>11){S.m=0;S.y++;} renderCal(); };
+el('#mPrev').onclick = function(){ S.m--; if(S.m<0){S.m=11;S.y--;} S.picked=null;
+  el('#dayCard').classList.add('hide'); renderCal(); };
+el('#mNext').onclick = function(){ S.m++; if(S.m>11){S.m=0;S.y++;} S.picked=null;
+  el('#dayCard').classList.add('hide'); renderCal(); };
 
 function inMonth(x, y, m){
   var s = T.toDate(x.startAt), e = T.toDate(x.endAt);
@@ -514,66 +571,149 @@ function inMonth(x, y, m){
 }
 function pad2(n){ return String(n).padStart(2,'0'); }
 
+function overlapsDay(x, y, m, d){
+  var d0 = new Date(y, m, d), d1 = new Date(d0.getTime() + 86399000);
+  return T.toDate(x.startAt) <= d1 && T.toDate(x.endAt) >= d0;
+}
+function otOnDay(x, y, m, d){
+  var t = T.toDate(x.date);
+  return t.getFullYear()===y && t.getMonth()===m && t.getDate()===d;
+}
+
 function renderCal(){
   el('#calTitle').textContent = S.y + ' 年 ' + (S.m + 1) + ' 月';
-  var list = S.leaves.filter(function(x){ return inMonth(x, S.y, S.m); });
+  var lv = S.leaves.filter(function(x){ return inMonth(x, S.y, S.m); });
+  var ot = S.ots.filter(function(x){
+    var t = T.toDate(x.date); return t.getFullYear()===S.y && t.getMonth()===S.m; });
 
   var first = new Date(S.y, S.m, 1).getDay();
   var days  = new Date(S.y, S.m+1, 0).getDate();
-  var today = new Date();
-  var todayK = today.getFullYear() + '-' + pad2(today.getMonth()+1) + '-' + pad2(today.getDate());
+  var now = new Date();
+  var todayK = now.getFullYear() + '-' + pad2(now.getMonth()+1) + '-' + pad2(now.getDate());
   var box = el('#mBody'); box.innerHTML = '';
 
   for(var i=0;i<first;i++){
     var p = document.createElement('div'); p.className = 'day pad'; box.appendChild(p);
   }
   for(var d=1; d<=days; d++){
-    var k = S.y + '-' + pad2(S.m+1) + '-' + pad2(d);
-    var dt = new Date(S.y, S.m, d);
-    var cell = document.createElement('div');
-    cell.className = 'day';
-    var t = T.dayType(dt);
-    if(t === 'holiday') cell.classList.add('hol');
-    else if(t === 'workday') cell.classList.add('wkd');
-    else if(dt.getDay()===0 || dt.getDay()===6) cell.classList.add('off');
-    if(k === todayK) cell.classList.add('today');
-    var h = '<div class="n">' + d + '</div>';
-    list.forEach(function(x){
-      var s = T.toDate(x.startAt), e = T.toDate(x.endAt);
-      var d0 = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
-      var d1 = new Date(d0.getTime() + 86399000);
-      if(s <= d1 && e >= d0)
-        h += '<div class="pill ' + x.status + '">' + esc(x.name) + '</div>';
-    });
-    cell.innerHTML = h;
-    box.appendChild(cell);
+    (function(d){
+      var k = S.y + '-' + pad2(S.m+1) + '-' + pad2(d);
+      var dt = new Date(S.y, S.m, d);
+      var cell = document.createElement('button');
+      cell.type = 'button'; cell.className = 'day';
+      var t = T.dayType(dt);
+      if(t === 'holiday') cell.classList.add('hol');
+      else if(t === 'workday') cell.classList.add('wkd');
+      else if(dt.getDay()===0 || dt.getDay()===6) cell.classList.add('off');
+      if(k === todayK) cell.classList.add('today');
+      if(S.picked === k) cell.classList.add('picked');
+
+      var dl = lv.filter(function(x){ return overlapsDay(x, S.y, S.m, d); });
+      var dow = ot.filter(function(x){ return otOnDay(x, S.y, S.m, d); });
+
+      var h = '<div class="n">' + d + '</div>';
+      /* 手機：小圓點 */
+      if(dl.length || dow.length){
+        var dots = dl.slice(0,6).map(function(x){ return '<i class="dot ' + x.status + '"></i>'; })
+          .concat(dow.slice(0,3).map(function(){ return '<i class="dot ot"></i>'; })).join('');
+        h += '<div class="dots">' + dots +
+          ((dl.length + dow.length) > 9 ? '<span class="more">+</span>' : '') + '</div>';
+      }
+      /* 電腦：直接寫名字 */
+      dl.forEach(function(x){
+        h += '<div class="pill ' + x.status + '">' + esc(x.name) + '</div>'; });
+      dow.forEach(function(x){
+        h += '<div class="pill ot">' + esc(x.name) + ' 加班</div>'; });
+      cell.innerHTML = h;
+      cell.onclick = function(){
+        S.picked = (S.picked === k) ? null : k;
+        renderCal();
+        if(S.picked) showDay(S.y, S.m, d);
+        else el('#dayCard').classList.add('hide');
+      };
+      box.appendChild(cell);
+    })(d);
   }
 
-  /* 本月申請清單 */
-  list.sort(function(a,b){ return T.toDate(a.startAt) - T.toDate(b.startAt); });
+  renderApplList(lv);
+  renderOtmList(ot);
+  if(S.picked){
+    var dd = parseInt(S.picked.slice(8));
+    showDay(S.y, S.m, dd);
+  }
+}
+
+/* 點某一天，列出那天的人 */
+function showDay(y, m, d){
+  var lv = S.leaves.filter(function(x){ return overlapsDay(x, y, m, d); });
+  var ot = S.ots.filter(function(x){ return otOnDay(x, y, m, d); });
+  el('#dayTitle').textContent = (m+1) + ' 月 ' + d + ' 日';
+  var box = el('#dayList');
+  el('#dayCard').classList.remove('hide');
+  if(!lv.length && !ot.length){
+    box.innerHTML = '<div class="empty">這天沒有請假或加班。</div>';
+    return;
+  }
+  box.innerHTML = lv.map(function(x){ return applRow(x, false); }).join('') +
+                  ot.map(function(x){ return otRow2(x); }).join('');
+}
+el('#dayClose').onclick = function(){
+  S.picked = null; el('#dayCard').classList.add('hide'); renderCal();
+};
+
+/* 一列請假 */
+function applRow(x, showFull){
+  var sameDay = T.fmtDate(x.startAt) === T.fmtDate(x.endAt);
+  var rng = sameDay
+    ? T.fmtDate(x.startAt) + '　' + T.fmtTime(x.startAt) + ' – ' + T.fmtTime(x.endAt)
+    : T.fmtDate(x.startAt) + ' – ' + T.fmtDate(x.endAt);
+  var h = '<div class="appl"><span class="who">' + esc(x.name) + '</span>' +
+    '<span class="rng">' + rng + '</span>';
+  if(S.lv2){
+    var label = (x.type==='other' && x.otherType) ? x.otherType : T.leaveTypeLabel(x.type);
+    h += '<span class="rng" style="color:var(--gold-b)">' + esc(label) + ' ' + x.hours + ' 小時</span>';
+  }
+  h += '<span class="tag ' + x.status + ' st">' + T.STATUS_LABEL[x.status] + '</span>';
+  h += '<div class="tl">申請 ' + T.fmtStamp(x.createdAt);
+  if(x.status === 'approved' || x.status === 'rejected')
+    h += '　·　' + (x.status==='approved'?'同意':'駁回') + ' ' + T.fmtStamp(x.reviewedAt);
+  if(x.status === 'cancelled') h += '　·　已撤銷';
+  if(x.status === 'pending') h += '　·　等待秘書長審核';
+  return h + '</div></div>';
+}
+
+/* 一列加班（含事由） */
+function otRow2(x){
+  var h = '<div class="appl"><span class="who">' + esc(x.name) + '</span>' +
+    '<span class="rng" style="color:#A9D2F0">加班　' + T.fmtDate(x.date) + '　' +
+    T.fmtTime(x.startAt) + ' – ' + T.fmtTime(x.endAt) + '</span>';
+  if(S.lv2)
+    h += '<span class="rng" style="color:var(--gold-b)">' + x.hours + ' 小時' +
+      (x.isDispatch ? '（核派，補休加倍）' : '') + '</span>';
+  h += '<span class="tag ' + x.status + ' st">' + T.STATUS_LABEL[x.status] + '</span>';
+  if(x.reason) h += '<div class="rsn">事由：' + esc(x.reason) + '</div>';
+  h += '<div class="tl">申請 ' + T.fmtStamp(x.createdAt);
+  if(x.status === 'approved' || x.status === 'rejected')
+    h += '　·　' + (x.status==='approved'?'同意':'駁回') + ' ' + T.fmtStamp(x.reviewedAt);
+  if(x.status === 'pending') h += '　·　等待秘書長審核';
+  return h + '</div></div>';
+}
+
+function renderApplList(list){
+  list = list.slice().sort(function(a,b){ return T.toDate(a.startAt) - T.toDate(b.startAt); });
   el('#applCnt').textContent = list.length ? list.length + ' 筆' : '';
-  var lb = el('#applList');
-  if(!list.length){ lb.innerHTML = '<div class="empty">這個月沒有請假申請。</div>'; return; }
-  lb.innerHTML = list.map(function(x){
-    var sameDay = T.fmtDate(x.startAt) === T.fmtDate(x.endAt);
-    var rng = sameDay
-      ? T.fmtDate(x.startAt) + '　' + T.fmtTime(x.startAt) + ' – ' + T.fmtTime(x.endAt)
-      : T.fmtDate(x.startAt) + ' – ' + T.fmtDate(x.endAt);
-    var h = '<div class="appl"><span class="who">' + esc(x.name) + '</span>' +
-      '<span class="rng">' + rng + '</span>';
-    if(S.lv2){
-      var label = (x.type==='other' && x.otherType) ? x.otherType : T.leaveTypeLabel(x.type);
-      h += '<span class="rng" style="color:var(--gold-b)">' + esc(label) + ' ' + x.hours + ' 小時</span>';
-    }
-    h += '<span class="tag ' + x.status + ' st">' + T.STATUS_LABEL[x.status] + '</span>';
-    h += '<div class="tl">申請 ' + T.fmtStamp(x.createdAt);
-    if(x.status === 'approved' || x.status === 'rejected')
-      h += '　·　' + (x.status==='approved'?'同意':'駁回') + ' ' + T.fmtStamp(x.reviewedAt);
-    if(x.status === 'cancelled') h += '　·　已撤銷';
-    if(x.status === 'pending') h += '　·　等待秘書長審核';
-    h += '</div></div>';
-    return h;
-  }).join('');
+  var box = el('#applList');
+  box.innerHTML = list.length
+    ? list.map(function(x){ return applRow(x); }).join('')
+    : '<div class="empty">這個月沒有請假申請。</div>';
+}
+function renderOtmList(list){
+  list = list.slice().sort(function(a,b){ return T.toDate(a.date) - T.toDate(b.date); });
+  el('#otmCnt').textContent = list.length ? list.length + ' 筆' : '';
+  var box = el('#otmList');
+  box.innerHTML = list.length
+    ? list.map(otRow2).join('')
+    : '<div class="empty">這個月沒有加班申請。</div>';
 }
 
 /* ---------- 年度總表 ---------- */
@@ -934,6 +1074,8 @@ function renderNoti(){
     box.innerHTML = '學會更換過檢視密碼，這台裝置的通知<b>已被關閉</b>。<br>請輸入新密碼重新開啟。';
     box.style.color = 'var(--warn)';
     el('#notiBtn').textContent = '輸入新密碼重新開啟';
+    /* 密碼換過了，把這台的訂閱也真的退掉，避免還在背景收通知 */
+    T.unsubscribePush();
   } else {
     box.innerHTML = '這台裝置目前<b>沒有</b>開啟通知。';
     box.style.color = 'var(--dim)';
