@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0A0D14">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" href="icon-192.png">
-<title>請假狀況檢視 — 台灣物理學會行政室</title>
+<meta name="apple-mobile-web-app-title" content="加班休假檢視">
+<link rel="apple-touch-icon" href="icon-stats.png">
+<link rel="icon" href="icon-stats.png">
+<title>加班休假檢視系統</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -294,7 +295,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 <section id="gate">
   <div class="gate-in">
     <div class="brand">TPS · 行政室</div>
-    <h1>請假狀況檢視</h1>
+    <h1>加班休假檢視系統</h1>
     <p class="gsub">社團法人台灣物理學會<br>查看行政室同仁的請假申請與核准狀況。</p>
     <div id="gErr" class="err hide"></div>
     <div class="field"><input type="password" id="gPw" placeholder="檢視密碼"></div>
@@ -304,7 +305,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 
 <div id="app" class="hide">
 <header class="top"><div class="tin">
-  <div><div class="sub">TPS · 行政室</div><div class="ttl">請假狀況檢視</div></div>
+  <div><div class="sub">TPS · 行政室</div><div class="ttl">加班休假檢視系統</div></div>
   <button class="lock" id="lockBtn"><span id="lockIc">🔒</span><span id="lockTx">完整資料</span></button>
 </div></header>
 
@@ -411,8 +412,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
         <div id="notiState" class="info"></div>
         <button class="btn" id="notiBtn" style="width:auto;padding:12px 24px">開啟通知</button>
         <div class="note" style="margin-top:14px">
-          手機推播還在開發中，開啟後之後上線就會直接收到。<br>
-          如果學會更換了檢視密碼，通知會自動關閉，要重新輸入新密碼才會恢復。
+          開啟後，行政室同仁提出請假或加班申請、以及秘書長核准或駁回時，手機會跳通知。
         </div>
       </div>
     </div>
@@ -1059,8 +1059,8 @@ el('#expBtn').onclick = function(){
     lv.sort(function(a,b){ return String(a['開始']).localeCompare(String(b['開始'])); });
     ot.sort(function(a,b){ return String(a['日期']).localeCompare(String(b['日期'])); });
 
-    XLSX.utils.book_append_sheet(wb, sheet(lv, [12,10,14,8,18,18,8,10,10,10,20,22]), '請假紀錄');
-    XLSX.utils.book_append_sheet(wb, sheet(ot, [12,10,10,8,8,8,10,34,10,20,22]), '加班紀錄');
+    XLSX.utils.book_append_sheet(wb, sheet(lv, [12,8,14,8,18,18,8,10,16,10,20,20,18,18,10,20,18,16,22]), '請假紀錄');
+    XLSX.utils.book_append_sheet(wb, sheet(ot, [12,8,12,8,8,8,10,8,10,8,34,10,18,18,10,20,18,16,22]), '加班紀錄');
 
     return Promise.all(S.accounts.map(function(a){
       return T.getBalance(a.email).then(function(bal){
@@ -1104,6 +1104,111 @@ el('#expBtn').onclick = function(){
       return Promise.resolve(rows);
     }).then(function(rows){
       XLSX.utils.book_append_sheet(wb, sheet(rows, [12,10,10,10,8,8,8,10,8,10,10,10,10]), '本月統計');
+      return Promise.all([T.fetchAudit(3000), T.listSettlements()]);
+    }).then(function(r){
+      var logs = r[0], settle = r[1];
+
+      /* 異動紀錄：誰在什麼時候改了什麼 */
+      var ACT = {
+        'leave.submit':'送出假單', 'leave.review':'審核假單', 'leave.cancel':'撤銷假單',
+        'leave.editOwn':'申請人修改假單', 'leave.proxy':'代理人回覆',
+        'leave.requestCancel':'申請撤銷', 'leave.reviewCancel':'處理撤銷申請',
+        'overtime.submit':'送出加班單', 'overtime.review':'審核加班單',
+        'record.edit':'修改紀錄', 'record.delete':'刪除紀錄',
+        'balance.edit':'手動調整時數', 'balance.grant':'年度發特休',
+        'balance.autoGrant':'自動發特休', 'balance.carryExpired':'遞延到期折算',
+        'balance.applyLaw':'套用法定特休', 'account.rename':'修改姓名',
+        'account.rate':'修改時薪', 'account.resetPw':'重設密碼',
+        'account.changePw':'使用者改密碼', 'account.handover':'換人接手',
+        'account.delete':'刪除帳號', 'staff.create':'新增人員', 'staff.delete':'刪除人員',
+        'calendar.set':'設定行事曆', 'calendar.delete':'刪除行事曆',
+        'config.statsPw':'更換檢視密碼', 'config.adminPw':'更換後台密碼',
+        'settlement.paid':'標記已發放'
+      };
+      var KEYNAME = {
+        annualCarry:'特休·去年遞延', annualCurrent:'特休·今年',
+        compCarry:'補休·去年遞延', compCurrent:'補休·今年',
+        annualRemaining:'特休合計', compRemaining:'補休合計'
+      };
+      /* 只挑看得懂的欄位，其他一律不印。
+         刪除／修改紀錄時整筆資料都會傳進來，全部印出來會變成一長串亂碼。 */
+      var FIELD = {
+        key:'項目', from:'原本', to:'改成', reason:'原因', note:'原因',
+        hours:'時數', decision:'決議', name:'姓名', type:'假別',
+        adminNote:'註記', kind:'類型', accept:'代理人是否同意',
+        mustPayHours:'應折發時數', granted:'發放時數', carried:'轉為遞延',
+        annualCarry:'特休·去年遞延', annualCurrent:'特休·今年',
+        compCarry:'補休·去年遞延', compCurrent:'補休·今年',
+        annualRemaining:'特休合計', compRemaining:'補休合計',
+        current:'今年', carry:'去年遞延', term:'任期', role:'身分',
+        hourlyRate:'時薪', epoch:'版本', paid:'是否已發放',
+        withRecords:'連紀錄一起刪', removedSubs:'關閉裝置數', anniv:'週年日',
+        expiredAt:'到期日', label:'說明'
+      };
+      var TYPENAME = {};
+      T.LEAVE_TYPES.forEach(function(t){ TYPENAME[t.id] = t.label; });
+      var KINDNAME = { leave:'請假', overtime:'加班' };
+
+      function val(k, v){
+        if(v === null || v === undefined || v === '') return null;
+        if(v && typeof v === 'object'){
+          if(v.toDate || v.__ts || v._ms) return T.fmtStamp(v);   // 時間物件
+          return null;                                            // 其他物件不印
+        }
+        if(k === 'type' && TYPENAME[v]) return TYPENAME[v];
+        if(k === 'kind' && KINDNAME[v]) return KINDNAME[v];
+        if(k === 'key' && FIELD[v]) return FIELD[v];
+        if(k === 'decision') return v === 'approved' ? '同意' : v === 'rejected' ? '不同意' : v;
+        if(k === 'accept' || k === 'paid' || k === 'withRecords')
+          return v === true ? '是' : v === false ? '否' : String(v);
+        if(typeof v === 'boolean') return v ? '是' : '否';
+        return String(v);
+      }
+      function brief(o){
+        if(!o) return '';
+        if(typeof o !== 'object') return String(o);
+        var out = [];
+        Object.keys(o).forEach(function(k){
+          if(!FIELD[k]) return;              // 沒列在白名單的一律跳過
+          if(k === 'adminKey') return;       // 密鑰絕對不能印出來
+          var v = val(k, o[k]);
+          if(v === null) return;
+          out.push(FIELD[k] + '：' + v);
+        });
+        return out.join('　');
+      }
+      var logRows = logs.map(function(x){
+        return {
+          '時間': T.fmtStamp(x.at),
+          '操作人': x.actorName || x.actor || '',
+          '身分': x.actor === 'admin' ? '秘書長' : (x.actor || ''),
+          '動作': ACT[x.action] || x.action,
+          '對象': x.targetId || '',
+          '原本': brief(x.before),
+          '改成': brief(x.after)
+        };
+      });
+      XLSX.utils.book_append_sheet(wb,
+        sheet(logRows, [18,12,24,18,26,34,42]), '異動紀錄');
+
+      /* 到期結算 */
+      var nameOf2 = {};
+      S.accounts.forEach(function(a){ nameOf2[a.email] = a.name || a.email; });
+      var stRows = settle.map(function(x){
+        return {
+          '姓名': nameOf2[x.email] || x.email,
+          '信箱': x.email,
+          '項目': x.kind === 'annual' ? '特別休假' : '加班補休',
+          '時數': x.hours,
+          '年度': x.year,
+          '到期日': x.expiredAt ? T.fmtDate(x.expiredAt) : '',
+          '原因': x.reason || '',
+          '是否已發放': x.paid ? '已發放' : '待發放',
+          '產生時間': T.fmtStamp(x.createdAt)
+        };
+      });
+      XLSX.utils.book_append_sheet(wb,
+        sheet(stRows, [12,26,12,8,8,12,40,12,18]), '到期結算');
       var stamp = new Date();
       var fn = 'TPS請假加班紀錄_' + stamp.getFullYear() +
         String(stamp.getMonth()+1).padStart(2,'0') + String(stamp.getDate()).padStart(2,'0') + '.xlsx';
@@ -1135,6 +1240,8 @@ function leaveRow(x, mark){
     '送出時間': T.fmtStamp(x.createdAt),
     '審核時間': x.reviewedAt ? T.fmtStamp(x.reviewedAt) : '',
     '審核人': x.reviewedBy || '', '註記': x.adminNote || '',
+    '最後修改': x.editedAt ? T.fmtStamp(x.editedAt) : '',
+    '修改人': x.editedBy || (x.editedByOwner ? '申請人自行修改' : ''),
     '備註': mark
   };
 }
@@ -1152,6 +1259,8 @@ function otRow(x, mark){
     '送出時間': T.fmtStamp(x.createdAt),
     '審核時間': x.reviewedAt ? T.fmtStamp(x.reviewedAt) : '',
     '審核人': x.reviewedBy || '', '註記': x.adminNote || '',
+    '最後修改': x.editedAt ? T.fmtStamp(x.editedAt) : '',
+    '修改人': x.editedBy || '',
     '備註': mark
   };
 }
