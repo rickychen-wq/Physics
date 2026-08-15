@@ -93,23 +93,6 @@ function say(msg, cls){
   logEl.innerHTML += '<span class="' + (cls||'') + '">' + msg + '</span>\n';
 }
 
-document.getElementById('resetPw').onclick = function(){
-  if(!confirm('確定把管理員後台的密碼重設為 123456？')) return;
-  var b = document.getElementById('resetPw');
-  b.disabled = true; b.textContent = '重設中…';
-  T.adminLogin(T.currentAdminPassword());   // 取得寫入身分
-  T.setMerge(T.COL.config, 'admin', { pw:'123456', changedAt: T.serverTimestamp() })
-   .then(function(){
-     document.getElementById('rlog').innerHTML =
-       '<span class="ok">✔ 已重設為 123456，請登入後立刻修改。</span>';
-     b.textContent = '已重設';
-   })
-   .catch(function(e){
-     document.getElementById('rlog').innerHTML = '<span class="bad">✘ 失敗：' + e.message + '</span>';
-     b.disabled = false; b.textContent = '重設後台密碼為 123456';
-   });
-};
-
 document.getElementById('go').onclick = function(){
   var b = document.getElementById('go');
   b.disabled = true; b.textContent = '建置中…'; logEl.innerHTML = '';
