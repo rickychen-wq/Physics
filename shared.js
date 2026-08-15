@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '6.5.0';
+var SHARED_VERSION = '7.0.0';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -404,8 +404,31 @@ function changePassword(oldPw, newPw, confirmPw) {
   });
 }
 
+/* 後台密碼：以資料庫為準，讀不到就退回預設值。
+   loadAdminPassword() 要在頁面載入時先呼叫一次。 */
+var _adminPw = ADMIN_PASSWORD;
+function loadAdminPassword() {
+  return getConfig('admin').then(function (c) {
+    if (c && c.pw) _adminPw = c.pw;
+    return _adminPw;
+  }).catch(function () { return _adminPw; });
+}
+function currentAdminPassword() { return _adminPw; }
+
+/** 秘書長改自己的後台密碼 */
+function setAdminPassword(oldPw, newPw, confirmPw) {
+  if (String(oldPw) !== _adminPw) return Promise.reject(new Error('目前的密碼不正確'));
+  var p = String(newPw || '').trim();
+  if (p.length < 4) return Promise.reject(new Error('新密碼至少 4 個字元'));
+  if (p !== String(confirmPw)) return Promise.reject(new Error('兩次輸入的新密碼不一樣'));
+  if (p === _adminPw) return Promise.reject(new Error('新密碼不能跟舊密碼一樣'));
+  return setMerge(COL.config, 'admin', { pw: p, changedAt: serverTimestamp() })
+    .then(function () { _adminPw = p; })
+    .then(function () { return writeAudit('config.adminPw', 'admin', null, null); });
+}
+
 function adminLogin(pw) {
-  if (String(pw) !== ADMIN_PASSWORD) return false;
+  if (String(pw) !== _adminPw) return false;
   _me = { email: 'admin', name: '秘書長', role: 'admin', active: true, term: 0 };
   return true;
 }
@@ -1878,6 +1901,8 @@ return {
   login: login, logout: logout, restoreSession: restoreSession,
   currentUser: currentUser, isAdmin: isAdmin, canApply: canApply,
   changePassword: changePassword, adminLogin: adminLogin, adminLogout: adminLogout,
+  loadAdminPassword: loadAdminPassword, currentAdminPassword: currentAdminPassword,
+  setAdminPassword: setAdminPassword,
   listAccounts: listAccounts, getAccount: getAccount, upsertAccount: upsertAccount,
   resetPassword: resetPassword, handoverAccount: handoverAccount, setMerge: setMerge,
   getBalance: getBalance, watchBalance: watchBalance, normalizeBal: normalizeBal,
