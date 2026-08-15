@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0A0D14">
-<title>初始建置 — 請假加班系統</title>
+<title>初始建置 — 請假／加班系統</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0A0D14;--card:#151C2B;--gold:#D9A93C;--gold-b:#F5D583;--txt:#EAEDF4;
@@ -31,7 +32,7 @@ button{width:100%;background:linear-gradient(145deg,var(--gold-b),var(--gold));c
   border:none;border-radius:11px;padding:14px;font-weight:700;font-size:15px;cursor:pointer;
   font-family:inherit}
 button:disabled{background:#2B3243;color:var(--dim2)}
-#log{font-family:var(--mono);font-size:12px;line-height:1.9;margin-top:16px;white-space:pre-wrap}
+#log,#rlog{font-family:var(--mono);font-size:12px;line-height:1.9;margin-top:16px;white-space:pre-wrap}
 .ok{color:var(--ok)} .bad{color:var(--bad)}
 .warn{background:rgba(229,168,63,.08);color:var(--gold-b);padding:12px 14px;border-radius:10px;
   font-size:13px;margin-bottom:16px;box-shadow:0 0 0 1px var(--line)}
@@ -62,6 +63,9 @@ button:disabled{background:#2B3243;color:var(--dim2)}
 <script src="shared.js"></script>
 <script>
 var T = window.TPS;
+/* setup 需要寫入權限，所以要帶後台密鑰。
+   這支檔案跑完請從 GitHub 刪掉。 */
+T.setAdminKey('tps-admin-8f3a2c91e7');
 /* 資料來源：社團法人台灣物理學會行政室請假加班時數_20240301（2026/8/13 版）
    遞延特休 = 2025未結 − 2026已使用（遞延優先扣） */
 var SEED = [
@@ -72,14 +76,14 @@ var SEED = [
   { email:'cjp@ps-taiwan.org',       name:'楊綺萍', hire:'2023-12-01',
     carry:63,   current:0,    comp:25.5,  usedA:7,    usedC:107, lastGrant:'2025-12-01' },
   { email:'bimonthly@ps-taiwan.org', name:'張文樺', hire:'2026-06-01',
-    carry:0,    current:0,    comp:6.5,   usedA:0,    usedC:41,  lastGrant:null },
-  { email:'chenfdhs453@gmail.com',   name:'陳睿騏', hire:'2025-01-01',
-    carry:20,   current:21,   comp:0,     usedA:0,    usedC:0,   lastGrant:'2026-01-01' }
+    carry:0,    current:0,    comp:6.5,   usedA:0,    usedC:41,  lastGrant:null }
 ];
 var EXPIRE = '2026-12-31';
 
+function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, function(c){
+  return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
 document.getElementById('preview').innerHTML = SEED.map(function(s){
-  return '<tr><td>' + s.name + '<span class="em">' + s.email + '</span></td>' +
+  return '<tr><td>' + esc(s.name) + '<span class="em">' + esc(s.email) + '</span></td>' +
     '<td>' + s.hire + '</td><td>' + s.carry + '</td><td>' + s.current + '</td>' +
     '<td>' + s.comp + '</td></tr>';
 }).join('');
@@ -88,6 +92,23 @@ var logEl = document.getElementById('log');
 function say(msg, cls){
   logEl.innerHTML += '<span class="' + (cls||'') + '">' + msg + '</span>\n';
 }
+
+document.getElementById('resetPw').onclick = function(){
+  if(!confirm('確定把管理員後台的密碼重設為 123456？')) return;
+  var b = document.getElementById('resetPw');
+  b.disabled = true; b.textContent = '重設中…';
+  T.adminLogin(T.currentAdminPassword());   // 取得寫入身分
+  T.setMerge(T.COL.config, 'admin', { pw:'123456', changedAt: T.serverTimestamp() })
+   .then(function(){
+     document.getElementById('rlog').innerHTML =
+       '<span class="ok">✔ 已重設為 123456，請登入後立刻修改。</span>';
+     b.textContent = '已重設';
+   })
+   .catch(function(e){
+     document.getElementById('rlog').innerHTML = '<span class="bad">✘ 失敗：' + e.message + '</span>';
+     b.disabled = false; b.textContent = '重設後台密碼為 123456';
+   });
+};
 
 document.getElementById('go').onclick = function(){
   var b = document.getElementById('go');
@@ -102,6 +123,8 @@ document.getElementById('go').onclick = function(){
         hireDate: T.Timestamp.fromDate(new Date(s.hire + 'T00:00:00')),
         resignDate: null, pwHash: T._hashPw(T.DEFAULT_PW),
         lastGrantAnniv: s.lastGrant || null,
+        hourlyRate: s.rate || T.SALARY.defaultRate,
+        isTest: !!s.isTest,
         createdAt: T.serverTimestamp()
       }).then(function(){
         return T.setMerge(T.COL.balances, s.email, {
@@ -117,7 +140,7 @@ document.getElementById('go').onclick = function(){
           updatedAt: T.serverTimestamp()
         });
       }).then(function(){
-        say('✔ ' + s.name + '　' + s.email + '　特休 ' +
+        say('✔ ' + esc(s.name) + '　' + esc(s.email) + '　特休 ' +
             T.roundHalf(s.carry + s.current) + '　補休 ' + s.comp, 'ok');
       });
     });
