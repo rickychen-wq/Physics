@@ -288,6 +288,35 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 .termtag{font-size:10.5px;padding:2px 8px;border-radius:20px;font-weight:700;
   background:rgba(141,150,172,.14);color:var(--dim)}
 
+/* ===== 密碼與權限 ===== */
+.cred-intro{padding-bottom:14px}
+.cred-map{display:grid;gap:8px;margin-top:12px}
+.cred-map-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:11px;
+  padding:11px 12px;border:1px solid rgba(203,221,255,.1);border-radius:12px;
+  background:rgba(4,9,19,.24)}
+.cred-no{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;
+  font:700 13px var(--mono);color:#dbe8ff;background:linear-gradient(145deg,#4779eb,#6c8eff);
+  box-shadow:0 7px 18px rgba(63,108,225,.26)}
+.cred-copy{min-width:0}.cred-copy b{display:block;font-size:13.5px;color:var(--txt)}
+.cred-copy span{display:block;margin-top:2px;font-size:11.5px;color:var(--dim2);line-height:1.45}
+.cred-chip{white-space:nowrap;padding:4px 8px;border-radius:999px;font-size:10.5px;font-weight:700;
+  color:#a9c7ff;background:rgba(83,126,226,.14);border:1px solid rgba(116,158,255,.18)}
+.cred-chip.fixed{color:#aeb7c8;background:rgba(141,150,172,.09);border-color:rgba(173,185,207,.12)}
+.cred-block{padding:18px 20px;border-top:1px solid var(--line)}
+.cred-block-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:13px}
+.cred-block-head .cred-no{flex:0 0 30px}
+.cred-block-title{min-width:0;flex:1}.cred-block-title h3{font-size:16px;line-height:1.35}
+.cred-role{margin-top:4px;font-size:11.5px;color:var(--gold-b);line-height:1.5}
+.cred-desc{margin-bottom:15px;color:var(--dim);font-size:12.5px;line-height:1.75}
+.cred-alert{margin:0 0 15px;padding:11px 12px;border-radius:11px;font-size:12px;line-height:1.65;
+  color:#ffd58a;background:rgba(229,168,63,.09);border:1px solid rgba(229,168,63,.18)}
+.cred-static{background:rgba(5,10,21,.16)}
+.cred-static .cred-desc{margin-bottom:0}
+@media(max-width:520px){
+  .cred-map-row{grid-template-columns:34px minmax(0,1fr)}
+  .cred-chip{grid-column:2;justify-self:start}
+  .cred-block{padding:17px 16px}
+}
 </style>
 <link rel="stylesheet" href="premium.css?v=3">
 </head>
@@ -460,34 +489,66 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
       </div>
     </section>
 
-    <section class="card">
-      <div class="chd"><h2>後台密碼</h2></div>
-      <div class="cbd">
-        <div class="info">這是進入管理員後台的密碼。<br>
-          如果忘記，請聯絡系統維護者協助重設。網站已移除 <b>setup.html</b>，請勿重新上傳。</div>
-        <div id="apErr" class="err hide"></div>
-        <div class="field"><label class="lb">目前密碼</label>
-          <input type="password" id="ap0" autocomplete="current-password"></div>
-        <div class="field"><label class="lb">新密碼</label>
-          <input type="password" id="ap1" autocomplete="new-password" minlength="8" placeholder="至少 8 個字元"></div>
-        <div class="field"><label class="lb">再輸入一次</label>
-          <input type="password" id="ap2" autocomplete="new-password" minlength="8" placeholder="再輸入一次"></div>
-        <button class="btn" id="apBtn">更新後台密碼</button>
+    <section class="card" id="credentialCenter">
+      <div class="chd"><h2>登入密碼與權限</h2><span class="unit">3 層用途不同</span></div>
+      <div class="cbd cred-intro">
+        <div class="info">這三組密碼控制不同入口，彼此不會連動。修改前請先確認要改的是哪一層；秘書個人的登入密碼不在這裡設定。</div>
+        <div class="cred-map" aria-label="密碼用途總覽">
+          <div class="cred-map-row">
+            <span class="cred-no">1</span>
+            <div class="cred-copy"><b>管理員後台</b><span>秘書長／管理者 · 審核、帳號與系統設定</span></div>
+            <span class="cred-chip">可在下方修改</span>
+          </div>
+          <div class="cred-map-row">
+            <span class="cred-no">2</span>
+            <div class="cred-copy"><b>檢視系統第一層</b><span>理事長／董事會 · 出勤通知與基本畫面</span></div>
+            <span class="cred-chip">可在下方修改</span>
+          </div>
+          <div class="cred-map-row">
+            <span class="cred-no">3</span>
+            <div class="cred-copy"><b>完整資料第二層</b><span>受信任記帳人員 · 假別、時數與 Excel</span></div>
+            <span class="cred-chip fixed">維護者設定</span>
+          </div>
+        </div>
       </div>
-    </section>
 
-    <section class="card">
-      <div class="chd"><h2>加班休假檢視系統密碼</h2></div>
-      <div class="cbd">
-        <div class="info">這是給理事長等六位檢視者用的密碼。<br>
-          <b>改了密碼之後，所有裝置的通知會被強制關閉</b>，
-          每個人要重新輸入新密碼才會再收到。換人時用這招最乾淨。</div>
-        <div class="field"><label class="lb">目前密碼</label>
+      <div class="cred-block">
+        <div class="cred-block-head">
+          <span class="cred-no">1</span>
+          <div class="cred-block-title"><h3>管理員後台密碼</h3><div class="cred-role">使用者：秘書長／管理者</div></div>
+        </div>
+        <div class="cred-desc">只用來進入目前這個管理員後台，不會更動董事會的檢視密碼，也不會關閉手機通知。忘記時請聯絡系統維護者；請勿重新上傳 <b>setup.html</b>。</div>
+        <div id="apErr" class="err hide"></div>
+        <div class="field"><label class="lb">目前的管理員後台密碼</label>
+          <input type="password" id="ap0" autocomplete="current-password"></div>
+        <div class="field"><label class="lb">新的管理員後台密碼</label>
+          <input type="password" id="ap1" autocomplete="new-password" minlength="8" placeholder="至少 8 個字元"></div>
+        <div class="field"><label class="lb">再輸入一次新密碼</label>
+          <input type="password" id="ap2" autocomplete="new-password" minlength="8" placeholder="再輸入一次"></div>
+        <button class="btn" id="apBtn">更改管理員後台密碼</button>
+      </div>
+
+      <div class="cred-block">
+        <div class="cred-block-head">
+          <span class="cred-no">2</span>
+          <div class="cred-block-title"><h3>檢視系統第一層密碼</h3><div class="cred-role">使用者：理事長、董事會與一般檢視者</div></div>
+        </div>
+        <div class="cred-desc">用來進入「加班休假檢視系統」的基本畫面，以及在這些裝置上接收行政室出勤通知。</div>
+        <div class="cred-alert"><b>修改後的影響：</b>所有已開啟的檢視系統通知會立即關閉，每台裝置都要輸入新密碼並重新開啟通知。</div>
+        <div class="field"><label class="lb">目前的第一層密碼</label>
           <input type="text" id="curStatsPw" readonly></div>
-        <div class="field"><label class="lb">改成</label>
+        <div class="field"><label class="lb">新的第一層密碼</label>
           <input type="text" id="newStatsPw" minlength="8" placeholder="至少 8 個字元"></div>
-        <button class="btn" id="savePw">更新密碼並關閉所有通知</button>
+        <button class="btn" id="savePw">更改第一層密碼並關閉所有通知</button>
         <div class="hint" id="pwMeta" style="margin-top:12px"></div>
+      </div>
+
+      <div class="cred-block cred-static">
+        <div class="cred-block-head">
+          <span class="cred-no">3</span>
+          <div class="cred-block-title"><h3>完整資料第二層密碼</h3><div class="cred-role">使用者：受信任的記帳人員</div></div>
+        </div>
+        <div class="cred-desc">在檢視系統內解鎖假別、詳細時數、每月統計與 Excel 匯出。這一層目前不在後台直接修改，避免和一般檢視密碼混淆；需要更換時請交由系統維護者處理。</div>
       </div>
     </section>
   </div>
@@ -767,7 +828,7 @@ el('#apBtn').onclick = function(){
   var b = el('#apBtn'); b.disabled = true;
   T.setAdminPassword(el('#ap0').value, el('#ap1').value, el('#ap2').value)
    .then(function(){
-     toast('後台密碼已更新','success');
+     toast('管理員後台密碼已更新','success');
      ['#ap0','#ap1','#ap2'].forEach(function(i){ el(i).value=''; });
    })
    .catch(function(e){ showErr('apErr', e.message); })
@@ -785,14 +846,14 @@ function loadSys(){
 el('#savePw').onclick = function(){
   var p = el('#newStatsPw').value.trim();
   if(p.length < 8) return toast('密碼至少 8 個字元','error');
-  if(!confirm('把檢視系統的密碼改成「' + p + '」？\n\n' +
+  if(!confirm('把檢視系統第一層密碼改成「' + p + '」？\n\n' +
      '所有裝置的通知都會被關閉，每個人要重新輸入新密碼才會再收到。')) return;
   var b = el('#savePw'); b.disabled = true; b.textContent = '更新中…';
   T.setStatsPassword(p).then(function(r){
-    toast('已更新，' + (r.removedSubs || 0) + ' 台裝置的通知已關閉','success');
+    toast('第一層密碼已更新，' + (r.removedSubs || 0) + ' 台裝置的通知已關閉','success');
     el('#newStatsPw').value = ''; loadSys();
   }).catch(function(e){ toast(e.message,'error'); })
-    .then(function(){ b.disabled = false; b.textContent = '更新密碼並關閉所有通知'; });
+    .then(function(){ b.disabled = false; b.textContent = '更改第一層密碼並關閉所有通知'; });
 };
 
 /* ---------- 到期結算 ---------- */

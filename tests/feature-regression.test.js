@@ -25,6 +25,10 @@ assert.match(shared, /acc\.pwHash !== saved\.pwHash/);
 assert.match(shared, /saveSession\(_me\.email, newHash\)/);
 assert.match(shared, /MIN_PASSWORD_LENGTH = 8/);
 assert.match(admin, /p\.length < 8/);
+assert.match(admin, /id="credentialCenter"/);
+assert.match(admin, /管理員後台密碼/);
+assert.match(admin, /檢視系統第一層密碼/);
+assert.match(admin, /完整資料第二層密碼/);
 
 for (const api of ['createAccount', 'setAccountActive', 'importCalendarDays', 'watchOfficeLeaves', 'watchScopeNotices']) {
   assert.match(shared, new RegExp(`${api}\\s*:`), `${api} must be exported`);
