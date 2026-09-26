@@ -303,7 +303,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 .activity .body{font-size:13px;color:var(--dim);margin-top:4px;line-height:1.65}
 
 </style>
-<link rel="stylesheet" href="premium.css?v=1">
+<link rel="stylesheet" href="premium.css?v=2">
 </head>
 <body class="stats-page">
 <section id="gate">
@@ -435,6 +435,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
         <div class="note">特休與補休都分「去年遞延」和「今年」兩部分，請假時優先扣遞延的。</div>
       </div>
       <div class="tw"><table id="tBal"></table></div>
+      <div id="balState" class="load-state" role="status" aria-live="polite">尚未載入</div>
     </div>
   </div>
 
@@ -509,7 +510,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="shared.js"></script>
@@ -658,13 +659,11 @@ function loadAll(){
   }).catch(function(e){ toast('載入失敗：' + e.message, 'error'); });
 }
 function refreshYears(){
-  var cur = el('#sumYear').value, yrs = {};
-  S.leaves.concat(S.ots).forEach(function(x){
-    var d = T.toDate(x.startAt || x.date); if(!isNaN(d)) yrs[d.getFullYear()] = 1; });
-  yrs[new Date().getFullYear()] = 1;
+  var nowYear = new Date().getFullYear(), cur = el('#sumYear').value, yrs = {};
+  for(var i = 0; i < 3; i++) yrs[nowYear - i] = 1;
   el('#sumYear').innerHTML = Object.keys(yrs).sort().reverse()
     .map(function(y){ return '<option value="' + y + '">' + y + ' 年</option>'; }).join('');
-  el('#sumYear').value = yrs[cur] ? cur : new Date().getFullYear();
+  el('#sumYear').value = yrs[cur] ? cur : nowYear;
 }
 function snap(s){ var o=[]; s.forEach(function(d){ var x=d.data(); x.id=d.id; o.push(x); }); return o; }
 function renderAll(){ renderCal(); renderBoardDashboard(); if(S.page!=='Cal') go(S.page); }
@@ -969,16 +968,34 @@ function matrix(people, map, months, max, rgb){
 
 /* ---------- 目前時數 ---------- */
 function renderBalances(){
-  el('#tBal').innerHTML = '<tbody><tr><td>載入中…</td></tr></tbody>';
-  Promise.all(S.accounts.map(function(a){
-    return T.getBalance(a.email).then(function(b){ return { a:a, b:b }; });
-  })).then(function(rows){
+  var table = el('#tBal'), state = el('#balState');
+  table.innerHTML = '';
+  state.className = 'load-state';
+  state.textContent = '載入中…';
+  if(!S.accounts.length){
+    state.className = 'load-state is-empty';
+    state.textContent = '目前沒有帳號資料。';
+    return;
+  }
+  var timer, jobs = S.accounts.map(function(a){
+    return T.getBalance(a.email)
+      .then(function(b){ return { a:a, b:b }; })
+      .catch(function(e){ return { a:a, b:null, error:e }; });
+  });
+  var timeout = new Promise(function(_, reject){
+    timer = setTimeout(function(){ reject(new Error('資料讀取逾時，請重新整理後再試。')); }, 12000);
+  });
+  Promise.race([Promise.all(jobs), timeout]).then(function(rows){
+    clearTimeout(timer);
+    var failed = rows.filter(function(r){ return r.error; });
     var head = '<thead><tr><th>姓名</th><th>特休·遞延</th><th>特休·今年</th><th class="tot">特休合計</th>' +
       '<th>補休·遞延</th><th>補休·今年</th><th class="tot">補休合計</th>' +
       '<th>今年已用特休</th><th>今年已用補休</th></tr></thead>';
     var body = rows.map(function(r){
-      var b = r.b;
-      return '<tr><td>' + esc(r.a.name || r.a.email) + '</td>' +
+      var name = esc(r.a.name || r.a.email);
+      if(r.error) return '<tr><td>' + name + '</td><td colspan="8" class="cell-error">讀取失敗</td></tr>';
+      var b = r.b || {};
+      return '<tr><td>' + name + '</td>' +
         '<td style="color:var(--warn)">' + (b.annualCarry||0) + '</td>' +
         '<td>' + (b.annualCurrent||0) + '</td>' +
         '<td class="tot">' + (b.annualRemaining||0) + '</td>' +
@@ -988,7 +1005,23 @@ function renderBalances(){
         '<td>' + (b.annualUsedYTD||0) + '</td>' +
         '<td>' + (b.compUsedYTD||0) + '</td></tr>';
     }).join('');
-    el('#tBal').innerHTML = head + '<tbody>' + body + '</tbody>';
+    table.innerHTML = head + '<tbody>' + body + '</tbody>';
+    if(failed.length){
+      state.className = 'load-state is-error';
+      state.textContent = failed.length === rows.length
+        ? '目前時數讀取失敗，請重新整理後再試。'
+        : '部分帳號資料讀取失敗，已在表格中標示。';
+      toast('目前時數有 ' + failed.length + ' 筆資料讀取失敗。', 'error');
+    } else {
+      state.className = 'load-state is-ready';
+      state.textContent = '資料已更新';
+    }
+  }).catch(function(e){
+    clearTimeout(timer);
+    table.innerHTML = '';
+    state.className = 'load-state is-error';
+    state.textContent = e.message || '資料讀取失敗，請重新整理後再試。';
+    toast(state.textContent, 'error');
   });
 }
 

@@ -492,3 +492,33 @@ input:focus,select:focus,textarea:focus{
   body::before{animation:none}
   .sheet-backdrop,.sheet-card{animation:none}
 }
+
+/* ===== v2 mobile and loading fixes ===== */
+html,body{min-height:100%;background:var(--bg)}
+body{background-color:var(--bg)}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(800px 460px at 50% -8%,rgba(217,169,60,.11),transparent 62%),
+             linear-gradient(180deg,var(--bg2),var(--bg));}
+
+/* Keep the staff navigation attached to the viewport and opaque enough to prevent bleed-through. */
+.staff-page .wrap{padding-bottom:calc(116px + var(--sb))}
+.staff-page .tabbar{bottom:0;width:min(100%,560px);padding-bottom:calc(5px + var(--sb));
+  border-bottom:0;border-radius:24px 24px 0 0;background:rgba(15,23,39,.96);
+  box-shadow:0 -10px 38px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.09);isolation:isolate}
+
+/* Clip horizontally-scrolling reports to their rounded glass card. */
+.stats-page .card{overflow:hidden}
+.stats-page .tw{position:relative;isolation:isolate;overflow-x:auto;overflow-y:hidden;padding:0 0 8px;overscroll-behavior-x:contain}
+.stats-page .tw table{margin:0}
+.stats-page th:first-child,.stats-page td:first-child{box-shadow:10px 0 15px -15px rgba(0,0,0,.9)}
+
+/* A quiet solid carry-over segment fits the glass UI better than diagonal warning stripes. */
+.staff-page .bar b{background:linear-gradient(90deg,#314a83,#4f6aa6);
+  box-shadow:inset 0 0 0 1px rgba(184,208,255,.3),0 0 10px rgba(76,119,216,.25)}
+
+.load-state{padding:12px 18px 16px;text-align:center;color:var(--dim2);font-size:12.5px;line-height:1.6}
+.load-state.is-ready{color:#6fdbad}
+.load-state.is-error{color:#f5928c}
+.load-state.is-empty{color:var(--dim2)}
+
+.cell-error{color:#f5928c!important;text-align:center!important;font-family:var(--sans)!important}
