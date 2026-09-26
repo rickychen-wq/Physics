@@ -10,7 +10,7 @@ for (const file of ['index.html', 'admin.html', 'stats.html']) {
   const ids = [...source.matchAll(/\sid="([^"]+)"/g)].map(match => match[1]);
   const duplicates = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
   assert.deepStrictEqual(duplicates, [], `${file} contains duplicate ids`);
-  assert.match(source, /premium\.css\?v=1/, `${file} must load the versioned premium theme`);
+  assert.match(source, /premium\.css\?v=\d+/, `${file} must load the versioned premium theme`);
 }
 
 console.log('static audit tests passed');

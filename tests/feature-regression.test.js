@@ -19,9 +19,12 @@ const admin = read('admin.html');
 const staff = read('index.html');
 const stats = read('stats.html');
 const calendar = read('calendar-data.js');
+const rules = read('firestore.rules');
 assert.match(shared, /tps\.session\.v2/);
 assert.match(shared, /acc\.pwHash !== saved\.pwHash/);
 assert.match(shared, /saveSession\(_me\.email, newHash\)/);
+assert.match(shared, /MIN_PASSWORD_LENGTH = 8/);
+assert.match(admin, /p\.length < 8/);
 
 for (const api of ['createAccount', 'setAccountActive', 'importCalendarDays', 'watchOfficeLeaves', 'watchScopeNotices']) {
   assert.match(shared, new RegExp(`${api}\\s*:`), `${api} must be exported`);
@@ -31,14 +34,19 @@ assert.match(admin, /id="calImport"/);
 assert.match(admin, /calendar-data\.js/);
 assert.doesNotMatch(admin, /function doRate\s*\(/);
 assert.match(staff, /id="officeToday"/);
-assert.match(staff, /watchOfficeLeaves/);
-assert.match(stats, /行政室出勤通知/);
+assert.match(staff, /watchTodayLeaves/);   // 前台只抓今天的，詳見 today-leaves.test.js
+assert.match(stats, /加班休假檢視系統/);
 assert.match(stats, /id="todayBoard"/);
 assert.match(stats, /id="upcomingBoard"/);
 assert.match(stats, /id="statsNotiList"/);
 assert.match(stats, /var LV2_PW/);
 assert.match(stats, /id="lockBtn"/);
 assert.match(stats, /id="lv2Sheet"/);
+assert.doesNotMatch(stats, /tps-admin-[a-z0-9]+/i, 'stats must not contain the admin key');
+assert.match(rules, /rules_version = '2'/);
+assert.match(shared, /ref\.set\(stamp\(\{ updatedAt: serverTimestamp\(\) \}\), \{ merge: true \}\)/);
+assert.doesNotMatch(rules, /allow delete: if wasAdmin\(\) \|\| isAdmin\(\)/);
+assert.match(rules, /allow delete: if wasAdmin\(\)/);
 assert.match(stats, /sessionStorage\.getItem\(LV2_KEY\)/);
 assert.match(stats, /xlsx\.full\.min\.js/);
 assert.match(stats, /id="expBtn"/);

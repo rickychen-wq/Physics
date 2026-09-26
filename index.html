@@ -503,9 +503,9 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
         <div class="field"><label class="lb" for="p0">目前的密碼</label>
           <input type="password" id="p0" autocomplete="current-password"></div>
         <div class="field"><label class="lb" for="p1">新密碼</label>
-          <input type="password" id="p1" autocomplete="new-password"></div>
+          <input type="password" id="p1" autocomplete="new-password" minlength="8" placeholder="至少 8 個字元"></div>
         <div class="field"><label class="lb" for="p2">再輸入一次新密碼</label>
-          <input type="password" id="p2" autocomplete="new-password"></div>
+          <input type="password" id="p2" autocomplete="new-password" minlength="8" placeholder="再輸入一次"></div>
         <button class="btn" id="pBtn">更新密碼</button>
       </div>
     </div>
@@ -602,7 +602,8 @@ function enter(u){
   S.unsub.push(T.watchMyLeaves(function(l){ S.leaves = l; paintMonth(); paintPending(); renderRecs(); }));
   S.unsub.push(T.watchMyOvertime(function(l){ S.ots = l; paintMonth(); paintPending(); renderRecs(); }));
   S.unsub.push(T.watchMyNotices(function(l){ S.notis = l; renderNotis(); }));
-  S.unsub.push(T.watchOfficeLeaves(function(l){ S.officeLeaves = l; renderOfficeToday(); }));
+  /* 只抓今天以後才結束的假單，不要把整個集合讀下來 */
+  S.unsub.push(T.watchTodayLeaves(function(l){ S.officeLeaves = l; renderOfficeToday(); }));
   T.loadCalendar().then(function(){ drawCal(); autoLeave(); });
   S.unsub.push(T.watchProxyRequests(function(l){ S.proxies = l; renderProxies(); }));
   T.proxyCandidates().then(function(list){

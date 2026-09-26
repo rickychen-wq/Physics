@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#070A12">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="行政室出勤">
+<meta name="apple-mobile-web-app-title" content="加班休假檢視系統">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest-stats.json">
 <link rel="apple-touch-icon" href="icon-stats.png">
 <link rel="icon" href="icon-stats.png">
-<title>行政室出勤通知</title>
+<title>加班休假檢視系統</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -310,7 +310,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 <section id="gate">
   <div class="gate-in">
     <div class="brand">TPS · 行政室</div>
-    <h1>行政室出勤通知</h1>
+    <h1>加班休假檢視系統</h1>
     <p class="gsub">社團法人台灣物理學會<br>快速查看今天與近期的行政室出勤狀況。</p>
     <div id="gErr" class="err hide"></div>
     <div class="field"><input type="password" id="gPw" placeholder="檢視密碼"></div>
@@ -320,9 +320,9 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 
 <div id="app" class="hide">
 <header class="top"><div class="tin">
-  <div><div class="sub">TPS · 行政室</div><div class="ttl">行政室出勤通知</div></div>
+  <div><div class="sub">TPS · 行政室</div><div class="ttl">加班休假檢視系統</div></div>
   <button class="lock" id="lockBtn" type="button" aria-haspopup="dialog" aria-expanded="false">
-    <span class="lock-ic" id="lockIc">🔒</span><span id="lockTx">記帳資料</span>
+    <span class="lock-ic" id="lockIc">🔒</span><span id="lockTx">完整資料</span>
   </button>
 </div></header>
 
@@ -330,7 +330,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
   <section class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="lv2Title">
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="sheet-icon" aria-hidden="true">⌁</div>
-    <h2 id="lv2Title">解鎖記帳資料</h2>
+    <h2 id="lv2Title">解鎖完整資料</h2>
     <p>僅提供受信任的記帳人員使用。解鎖後可查看假別、時數、每月統計與匯出 Excel。</p>
     <label class="lb" for="lv2Pw">第二層密碼</label>
     <input type="password" id="lv2Pw" autocomplete="current-password" inputmode="numeric" placeholder="輸入第二層密碼">
@@ -567,7 +567,7 @@ function enter(){
 function unlock(on){
   S.lv2 = on;
   el('#lockIc').textContent = on ? '🔓' : '🔒';
-  el('#lockTx').textContent = on ? '記帳資料 · 已解鎖' : '記帳資料';
+  el('#lockTx').textContent = on ? '完整資料 · 已解鎖' : '完整資料';
   el('#lockBtn').classList.toggle('on', on);
   el('#lockBtn').setAttribute('aria-expanded', on ? 'true' : 'false');
   Array.prototype.forEach.call(document.querySelectorAll('.lv2'), function(b){
@@ -596,13 +596,13 @@ function submitLv2(){
   }
   unlock(true);
   closeLv2Sheet();
-  toast('已解鎖記帳資料','success');
+  toast('已解鎖完整資料','success');
   renderAll();
 }
 el('#lockBtn').onclick = function(){
   if(S.lv2){
     unlock(false);
-    toast('記帳資料已鎖定','success');
+    toast('完整資料已鎖定','success');
     return;
   }
   openLv2Sheet();

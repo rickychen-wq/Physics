@@ -392,7 +392,7 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
     <section class="card">
       <div class="chd"><h2>官方行事曆</h2><span class="unit">行政院人事行政總處</span></div>
       <div class="cbd">
-        <div class="info">匯入官方公告的放假與補班例外日。同日期會更新，自己另外新增的日期不會被刪除。</div>
+        <div class="info">匯入官方公告的放假與補班例外日。同日期會更新，自己另外新增的日期不會被刪除。<br><b>資料是內建在網站裡的，不會自動連線更新。</b>人事行政總處每年 6 月底前公告隔年的日曆表，屆時要更新 calendar-data.js 才能匯入新的一年；更新前也可以用下方「新增」手動輸入。</div>
         <div class="row2" style="margin-top:12px">
           <select id="calImportYear"></select>
           <button class="btn" id="calImport">匯入</button>
@@ -469,15 +469,15 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
         <div class="field"><label class="lb">目前密碼</label>
           <input type="password" id="ap0" autocomplete="current-password"></div>
         <div class="field"><label class="lb">新密碼</label>
-          <input type="password" id="ap1" autocomplete="new-password"></div>
+          <input type="password" id="ap1" autocomplete="new-password" minlength="8" placeholder="至少 8 個字元"></div>
         <div class="field"><label class="lb">再輸入一次</label>
-          <input type="password" id="ap2" autocomplete="new-password"></div>
+          <input type="password" id="ap2" autocomplete="new-password" minlength="8" placeholder="再輸入一次"></div>
         <button class="btn" id="apBtn">更新後台密碼</button>
       </div>
     </section>
 
     <section class="card">
-      <div class="chd"><h2>檢視系統（stats）密碼</h2></div>
+      <div class="chd"><h2>加班休假檢視系統密碼</h2></div>
       <div class="cbd">
         <div class="info">這是給理事長等六位檢視者用的密碼。<br>
           <b>改了密碼之後，所有裝置的通知會被強制關閉</b>，
@@ -485,7 +485,7 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
         <div class="field"><label class="lb">目前密碼</label>
           <input type="text" id="curStatsPw" readonly></div>
         <div class="field"><label class="lb">改成</label>
-          <input type="text" id="newStatsPw" placeholder="至少 4 個字元"></div>
+          <input type="text" id="newStatsPw" minlength="8" placeholder="至少 8 個字元"></div>
         <button class="btn" id="savePw">更新密碼並關閉所有通知</button>
         <div class="hint" id="pwMeta" style="margin-top:12px"></div>
       </div>
@@ -784,7 +784,7 @@ function loadSys(){
 }
 el('#savePw').onclick = function(){
   var p = el('#newStatsPw').value.trim();
-  if(p.length < 4) return toast('密碼至少 4 個字元','error');
+  if(p.length < 8) return toast('密碼至少 8 個字元','error');
   if(!confirm('把檢視系統的密碼改成「' + p + '」？\n\n' +
      '所有裝置的通知都會被關閉，每個人要重新輸入新密碼才會再收到。')) return;
   var b = el('#savePw'); b.disabled = true; b.textContent = '更新中…';

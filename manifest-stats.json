@@ -1,7 +1,7 @@
 {
   "id": "./stats.html",
-  "name": "台灣物理學會 行政室出勤通知",
-  "short_name": "行政室出勤",
+  "name": "台灣物理學會 加班休假檢視系統",
+  "short_name": "加班休假檢視",
   "start_url": "stats.html",
   "scope": "./",
   "display": "standalone",

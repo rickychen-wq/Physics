@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '7.0.0';
+var SHARED_VERSION = '7.1.0';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -80,6 +80,7 @@ var WORK_WINDOWS   = [[9, 12], [13, 17]];
 var DEFAULT_PW     = '123456';
 var ADMIN_PASSWORD = '0423';
 var STATS_DEFAULT_PW = 'physics';   // stats 第一層預設密碼，之後可在後台改
+var MIN_PASSWORD_LENGTH = 8;       // 新設定的密碼至少 8 個字元；既有密碼仍可登入後再更新
 
 /* 後台密鑰。
    刻意不寫在這裡 —— shared.js 是所有頁面都會載入的，
@@ -461,7 +462,7 @@ function restoreSession() {
 /** 自己改密碼：舊密碼 + 新密碼兩次 */
 function changePassword(oldPw, newPw, confirmPw) {
   if (!_me) return Promise.reject(new Error('尚未登入'));
-  if (String(newPw).length < 4) return Promise.reject(new Error('新密碼至少 4 個字元'));
+  if (String(newPw).length < MIN_PASSWORD_LENGTH) return Promise.reject(new Error('新密碼至少 8 個字元'));
   if (String(newPw) !== String(confirmPw)) return Promise.reject(new Error('兩次輸入的新密碼不一樣'));
   if (String(newPw) === String(oldPw)) return Promise.reject(new Error('新密碼不能跟舊密碼一樣'));
   var ref = db.collection(COL.accounts).doc(_me.email);
@@ -492,7 +493,7 @@ function currentAdminPassword() { return _adminPw; }
 function setAdminPassword(oldPw, newPw, confirmPw) {
   if (String(oldPw) !== _adminPw) return Promise.reject(new Error('目前的密碼不正確'));
   var p = String(newPw || '').trim();
-  if (p.length < 4) return Promise.reject(new Error('新密碼至少 4 個字元'));
+  if (p.length < MIN_PASSWORD_LENGTH) return Promise.reject(new Error('新密碼至少 8 個字元'));
   if (p !== String(confirmPw)) return Promise.reject(new Error('兩次輸入的新密碼不一樣'));
   if (p === _adminPw) return Promise.reject(new Error('新密碼不能跟舊密碼一樣'));
   return setMerge(COL.config, 'admin', { pw: p, changedAt: serverTimestamp() })
@@ -1480,6 +1481,27 @@ function watchOfficeLeaves(cb) {
     cb(snapList(s).sort(byNewest));
   }, function (e) { _onError(e); });
 }
+
+/**
+ * 前台「今天行政室」專用：只抓「今天之後才結束」的假單。
+ *
+ * watchOfficeLeaves 會把整個假單集合讀出來——stats 需要完整歷史所以沒問題，
+ * 但前台四位秘書每天會開很多次，每次都讀全部的話，資料累積幾年後
+ * （例如 1200 筆 × 4 人 × 每天 5 次 ≈ 2.4 萬次讀取）會吃掉一半的免費額度。
+ *
+ * 單一欄位的範圍查詢不需要建複合索引（符合本專案「不用 orderBy」的原則）。
+ * 頁面開過午夜時查詢邊界會停在昨天，但 renderOfficeToday 每次都重算今天，
+ * 所以只是多讀幾筆，顯示不會錯。
+ */
+function watchTodayLeaves(cb) {
+  var now = new Date();
+  var dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return db.collection(COL.leave)
+    .where('endAt', '>', TS.fromDate(dayStart))
+    .onSnapshot(function (s) {
+      cb(snapList(s).sort(byNewest));
+    }, function (e) { _onError(e); });
+}
 function watchPendingLeaves(cb) {
   return db.collection(COL.leave).where('status', '==', STATUS.PENDING)
     .onSnapshot(function (s) { cb(snapList(s).sort(byOldest)); }, function (e) { _onError(e); });
@@ -1574,6 +1596,9 @@ function deleteRecord(kind, id) {
     }).then(function () {
       return writeAudit('record.delete', id, R || null, { kind: kind });
     });
+  }).then(function () {
+    // 刪除請求沒有 request.resource；先把後台密鑰寫入原紀錄，讓規則能驗證。
+    return ref.set(stamp({ updatedAt: serverTimestamp() }), { merge: true });
   }).then(function () { return ref.delete(); });
 }
 
@@ -2014,7 +2039,7 @@ function getStatsPassword() {
 function setStatsPassword(newPw) {
   if (!isAdmin()) return Promise.reject(new Error('只有秘書長可以修改'));
   var p = String(newPw || '').trim();
-  if (p.length < 4) return Promise.reject(new Error('密碼至少 4 個字元'));
+  if (p.length < MIN_PASSWORD_LENGTH) return Promise.reject(new Error('密碼至少 8 個字元'));
   return getStatsPassword().then(function (c) {
     return setMerge(COL.config, 'stats', {
       pw: p, epoch: (c.epoch || 0) + 1, changedAt: serverTimestamp()
@@ -2116,7 +2141,7 @@ return {
   LEAVE_LIMITS: LEAVE_LIMITS, SALARY: SALARY, OT_REASON_MIN: OT_REASON_MIN,
   submitOvertime: submitOvertime, reviewOvertime: reviewOvertime,
   watchMyLeaves: watchMyLeaves, watchMyOvertime: watchMyOvertime,
-  watchOfficeLeaves: watchOfficeLeaves,
+  watchOfficeLeaves: watchOfficeLeaves, watchTodayLeaves: watchTodayLeaves,
   watchPendingLeaves: watchPendingLeaves, watchPendingOvertime: watchPendingOvertime,
   fetchAllRecords: fetchAllRecords, fetchAudit: fetchAudit,
   deleteRecord: deleteRecord, editRecord: editRecord, listDeleted: listDeleted,

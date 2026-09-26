@@ -1,0 +1,246 @@
+/* ============================================================
+ *  本檔放進專案是為了版本控管。
+ *  Firebase Console 上實際生效的是 Console 裡那一份，
+ *  兩邊不會自動同步 —— 改了這裡要記得貼到 Console 發布，
+ *  在 Console 改了也要記得貼回這裡。
+ *
+ *  已確認與 shared.js v7.1.0 相容：
+ *  createAccount / setAccountActive / importCalendarDays 都走後台密鑰，
+ *  pushNoticeToActiveStaff 寫的通知符合 notices 的格式限制。
+ * ============================================================ */
+
+rules_version = '2';
+
+/* ============================================================
+ *  台灣物理學會 請假加班系統 — Firestore 安全規則
+ *  版本 1.0 ／ 2026-08
+ *
+ *  【這份規則的定位】
+ *  這個系統的登入是網頁自己比對密碼，Firestore 端不知道使用者是誰，
+ *  所以規則沒辦法寫「只能改自己的資料」。
+ *  能做到的是：限制「可以做什麼形狀的動作」，並把所有危險操作
+ *  收斂到後台專用的密鑰後面。
+ *
+ *  能降低誤操作與一般探測：限制狀態、欄位、時數與刪除流程
+ *  擋不住：密鑰可從公開原始碼取得、冒名送單、帳號接管、整包讀取資料
+ *
+ *  【後台密鑰】
+ *  後台寫入時會在資料裡附上 adminKey，規則檢查它是否正確。
+ *  要換密鑰時，這裡和 admin.html 的 T_KEY 兩邊都要改。
+ * ============================================================ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------- 工具 ---------- */
+
+    // 後台密鑰。要換的話，這裡和 admin.html 的 T_KEY 要同時改。
+    function adminKey() {
+      return 'tps-admin-8f3a2c91e7';
+    }
+    // 這次寫入有沒有帶正確的密鑰
+    function isAdmin() {
+      return request.resource.data.get('adminKey', '') == adminKey();
+    }
+    // 刪除時沒有 request.resource，改看文件裡原本留的密鑰
+    function wasAdmin() {
+      return resource.data.get('adminKey', '') == adminKey();
+    }
+    // 只動到這些欄位
+    function onlyChanged(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+    function isStr(f, maxLen) {
+      return request.resource.data[f] is string
+             && request.resource.data[f].size() <= maxLen;
+    }
+    function num(f) {
+      return request.resource.data[f] is number;
+    }
+    // 時數合理範圍，防止有人塞 999999
+    function sane(f, maxV) {
+      return num(f) && request.resource.data[f] >= 0 && request.resource.data[f] <= maxV;
+    }
+
+    /* ---------- accounts：帳號 ----------
+       讀：開放（登入要比對密碼、代理人下拉要列名單）
+       建立／刪除：只有後台
+       修改：無 Auth 時無法驗證本人；規則只能限制密碼更新的欄位，
+             其他欄位都要後台密鑰                              */
+    match /accounts/{email} {
+      allow read: if true;
+
+      allow create: if isAdmin();
+      allow delete: if false;          // 帳號一律不刪，要停用就把 active 設 false
+
+      allow update: if
+        // (A) 前端改密碼：只准動 pwHash 和 updatedAt；無法驗證是不是本人
+        onlyChanged(['pwHash', 'updatedAt'])
+        ||
+        // (B) 後台：改姓名、時薪、到職日、換人接手等
+        isAdmin();
+    }
+
+    /* ---------- balances：時數 ----------
+       這是整個系統最敏感的地方，前端一律不准寫。
+       扣款、加班換補休、年度發放，全部由後台密鑰寫入。   */
+    match /balances/{email} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ---------- leaveRequests：假單 ---------- */
+    match /leaveRequests/{id} {
+      allow read: if true;
+
+      // 新增：狀態一定要是 pending，審核欄位一定要是空的
+      allow create: if
+        request.resource.data.status == 'pending'
+        && request.resource.data.reviewedBy == null
+        && request.resource.data.reviewedAt == null
+        && isStr('email', 120)
+        && isStr('name', 40)
+        && isStr('type', 20)
+        && sane('hours', 400)
+        && sane('annualHours', 400)
+        && sane('compHours', 400)
+        && request.resource.data.startAt is timestamp
+        && request.resource.data.endAt is timestamp
+        && request.resource.data.startAt < request.resource.data.endAt
+        && isStr('lateReason', 500)
+        && isStr('proxyName', 40);
+
+      allow update: if
+        // (A) 申請人自己撤銷：只有 pending 能撤，而且只准改這幾欄
+        (
+          resource.data.status == 'pending'
+          && request.resource.data.status == 'cancelled'
+          && onlyChanged(['status','cancelledBy','cancelledAt','updatedAt','adminNote'])
+        )
+        ||
+        // (A2) 申請人修改還在待審的假單（改錯字不用整張重來）
+        (
+          resource.data.status == 'pending'
+          && request.resource.data.status == 'pending'
+          && sane('hours', 400)
+          && request.resource.data.startAt < request.resource.data.endAt
+          && onlyChanged(['type','otherType','startAt','endAt','hours',
+                          'annualHours','compHours','segments',
+                          'editedByOwner','editedAt','updatedAt'])
+        )
+        ||
+        // (A3) 對已核准的假單提出撤銷申請（只是提出，時數不動）
+        (
+          resource.data.status == 'approved'
+          && request.resource.data.status == 'approved'
+          && request.resource.data.cancelRequest == 'waiting'
+          && isStr('cancelReason', 300)
+          && onlyChanged(['cancelRequest','cancelReason','cancelRequestedAt','updatedAt'])
+        )
+        ||
+        // (B) 代理人回覆：只有還在等待中的能回，不能順便改別的
+        (
+          resource.data.proxyStatus == 'waiting'
+          && resource.data.status == 'pending'
+          && request.resource.data.proxyStatus in ['accepted','declined']
+          && onlyChanged(['proxyStatus','proxyRespondedAt','proxyNote','updatedAt',
+                          'status','cancelledBy','cancelledAt'])
+        )
+        ||
+        // (C) 後台：審核、修改、加註記
+        isAdmin();
+
+      // 後台 deleteRecord 會先備份，再把後台密鑰寫進原紀錄後刪除
+      allow delete: if wasAdmin();
+    }
+
+    /* ---------- overtimeRequests：加班單 ---------- */
+    match /overtimeRequests/{id} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.status == 'pending'
+        && request.resource.data.reviewedBy == null
+        && request.resource.data.bonusHours == 0        // 增額只能由後台給
+        && request.resource.data.isDispatch == false    // 核派與否只能由後台決定
+        && isStr('email', 120)
+        && isStr('name', 40)
+        && sane('hours', 24)
+        && request.resource.data.date is timestamp
+        && isStr('reason', 500)
+        && request.resource.data.reason.size() >= 10;   // 事由至少 10 個字
+
+      allow update: if isAdmin();
+      allow delete: if wasAdmin();
+    }
+
+    /* ---------- notices：站內通知 ----------
+       任何人都能建（送假單時要通知代理人、通知申請人）
+       但只准把 read 標成已讀，不能改內容                */
+    match /notices/{id} {
+      allow read: if true;
+      allow create: if isStr('email', 120) && isStr('title', 100) && isStr('body', 1000);
+      allow update: if onlyChanged(['read','readAt']) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /* ---------- calendar：國定假日與補班日 ---------- */
+    match /calendar/{date} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ---------- settlements：到期折算薪資 ----------
+       建立是系統自動判斷到期時寫的，所以要開；
+       但只准標記已發放，其他一律後台                    */
+    match /settlements/{id} {
+      allow read: if true;
+      allow create: if isStr('email', 120) && sane('hours', 2000);
+      allow update: if onlyChanged(['paid','paidAt','updatedAt']) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /* ---------- deletedRecords：刪除備份 ----------
+       只能新增和讀取，永遠不能改也不能刪，
+       這樣「誰刪了什麼」才有意義                        */
+    match /deletedRecords/{id} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    /* ---------- auditLog：稽核軌跡 ----------
+       只能寫入，永遠不能改不能刪，湮滅不了證據          */
+    match /auditLog/{id} {
+      allow read: if true;
+      allow create: if isStr('action', 60);
+      allow update, delete: if false;
+    }
+
+    /* ---------- config：系統設定（stats 密碼等） ---------- */
+    match /config/{key} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ---------- pushSubs：手機推播訂閱 ----------
+       每台裝置一筆。發送時要讀得到別人的訂閱（秘書長核准要通知申請人），
+       所以讀取開放；內容則限制格式，避免被塞垃圾。      */
+    match /pushSubs/{id} {
+      allow read: if true;
+      allow create, update: if
+        request.resource.data.endpoint is string
+        && request.resource.data.endpoint.size() < 600
+        && request.resource.data.scope is string
+        && request.resource.data.scope.size() < 120;
+      allow delete: if true;      // 使用者要能關掉自己的通知
+    }
+
+    /* ---------- 上面沒列到的一律拒絕 ----------
+       之後新增集合忘記寫規則的話，會直接被擋下來，
+       比默默全開好。                                     */
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
