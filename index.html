@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0A0D14">
+<meta name="theme-color" content="#070A12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="請假／加班">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -125,9 +125,10 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
   padding:16px calc(16px + var(--sr)) calc(96px + var(--sb)) calc(16px + var(--sl))}
 
 /* ===== 底部分頁 ===== */
-.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;
+.tabbar{position:fixed;left:50%;bottom:0;z-index:30;display:grid;width:min(100%,560px);
+  transform:translateX(-50%);
   grid-template-columns:repeat(4,1fr);background:rgba(13,17,26,.94);backdrop-filter:blur(14px);
-  border-top:1px solid var(--line);padding-bottom:var(--sb)}
+  border:1px solid var(--line);border-bottom:0;padding-bottom:var(--sb)}
 .tabbar button{background:none;border:none;padding:9px 4px 10px;cursor:pointer;
   color:var(--dim2);font-size:10.5px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .tabbar button span{font-size:19px;line-height:1.2;filter:grayscale(1) opacity(.55)}
@@ -245,6 +246,14 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
   display:grid;place-items:center;padding:0 4px;font-family:var(--mono)}
 .tabbar button{position:relative}
 
+/* ===== 行政室今日狀態 ===== */
+.office-row{padding:13px 17px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;gap:12px;align-items:center}
+.office-row:last-child{border-bottom:none}
+.office-row .office-main{flex:1}
+.office-row .office-name{font-weight:700;font-size:14.5px}
+.office-row .office-time{font-size:12.5px;color:var(--dim);margin-top:2px}
+.office-ok{padding:20px 17px;color:var(--ok);font-weight:700}
+
 /* ===== 快捷鍵 ===== */
 .quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .quick button{background:var(--bg);border:1px solid rgba(255,255,255,.09);border-radius:10px;
@@ -278,8 +287,9 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 .kv b{font-weight:600;word-break:break-all}
 
 </style>
+<link rel="stylesheet" href="premium.css?v=1">
 </head>
-<body>
+<body class="staff-page">
 <!-- 登入：滿版 -->
 <section id="gate">
   <div class="gate-in">
@@ -318,6 +328,11 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
       <div class="cbd" style="padding:14px 16px">
         <div class="info" style="margin:0">你還在用預設密碼，建議到「設定」改掉。</div>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="chd"><h2>今天行政室</h2><span class="unit" id="officeDate"></span></div>
+      <div id="officeToday"><div class="empty">載入中…</div></div>
     </div>
 
     <div class="card">
@@ -528,7 +543,8 @@ var T = window.TPS, el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.round
 T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'error'); });
 
 var S = { page:'Home', tab:'leave', type:'annual', recKind:'all',
-          bal:{}, peak:{a:1,c:1}, unsub:[], busy:false, leaves:[], ots:[], notis:[], proxies:[] };
+          bal:{}, peak:{a:1,c:1}, unsub:[], busy:false, leaves:[], ots:[], notis:[], proxies:[],
+          officeLeaves:[] };
 var THIS_MONTH = (function(){ var d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); })();
 
@@ -586,6 +602,7 @@ function enter(u){
   S.unsub.push(T.watchMyLeaves(function(l){ S.leaves = l; paintMonth(); paintPending(); renderRecs(); }));
   S.unsub.push(T.watchMyOvertime(function(l){ S.ots = l; paintMonth(); paintPending(); renderRecs(); }));
   S.unsub.push(T.watchMyNotices(function(l){ S.notis = l; renderNotis(); }));
+  S.unsub.push(T.watchOfficeLeaves(function(l){ S.officeLeaves = l; renderOfficeToday(); }));
   T.loadCalendar().then(function(){ drawCal(); autoLeave(); });
   S.unsub.push(T.watchProxyRequests(function(l){ S.proxies = l; renderProxies(); }));
   T.proxyCandidates().then(function(list){
@@ -594,6 +611,34 @@ function enter(u){
           return '<option value="' + esc(a.email) + '">' + esc(a.name || a.email) + '</option>'; }).join('')
       : '<option value="">目前沒有其他同仁可以指定</option>';
   });
+}
+
+/* ---------- 今天行政室 ---------- */
+function renderOfficeToday(){
+  var now = new Date(), dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
+  el('#officeDate').textContent = T.fmtDate(dayStart);
+  var list = S.officeLeaves.filter(function(x){
+    if(x.status !== T.STATUS.APPROVED && x.status !== T.STATUS.PENDING) return false;
+    var s = T.toDate(x.startAt), e = T.toDate(x.endAt);
+    return s < dayEnd && e > dayStart;
+  }).sort(function(a,b){ return T.toDate(a.startAt) - T.toDate(b.startAt); });
+  var box = el('#officeToday');
+  if(!list.length){
+    box.innerHTML = '<div class="office-ok">✓ 今天目前全員在班</div>'; return;
+  }
+  box.innerHTML = list.map(function(x){
+    var s = T.toDate(x.startAt), e = T.toDate(x.endAt), time;
+    if(s <= dayStart && e >= dayEnd) time = '今天全天不在';
+    else if(s < dayStart) time = '今天 09:00 – ' + T.fmtTime(e);
+    else if(e >= dayEnd) time = '今天 ' + T.fmtTime(s) + ' – 17:00';
+    else time = '今天 ' + T.fmtTime(s) + ' – ' + T.fmtTime(e);
+    return '<div class="office-row"><div class="office-main">' +
+      '<div class="office-name">' + esc(x.name || x.email) + '</div>' +
+      '<div class="office-time">' + esc(time) + '</div></div>' +
+      '<span class="tag ' + esc(x.status) + '">' +
+      (x.status === T.STATUS.APPROVED ? '已核准' : '待審核') + '</span></div>';
+  }).join('');
 }
 
 /* ---------- 需要我確認的代理 ---------- */
@@ -1111,7 +1156,7 @@ function renderPush(){
   btn.disabled = false;
   T.pushStatus().then(function(p){
     if(p.on){
-      st.innerHTML = '手機通知<b>已開啟</b>。假單被核准或駁回時會通知你。';
+      st.innerHTML = '手機通知<b>已開啟</b>。會收到自己的審核結果、代理請求與同事出勤動態。';
       st.style.color = 'var(--ok)';
       btn.textContent = '關閉手機通知';
     } else {
@@ -1119,7 +1164,7 @@ function renderPush(){
       st.style.color = 'var(--dim)';
       btn.textContent = '開啟手機通知';
     }
-    hint.innerHTML = '開啟後，假單被核准或駁回、有人指定你當代理人時，手機會跳通知。';
+    hint.innerHTML = '開啟後，自己的審核結果、代理請求，以及同事請假／加班動態都會跳通知。';
   });
 }
 el('#pushBtn').onclick = function(){

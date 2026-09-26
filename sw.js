@@ -15,10 +15,13 @@ self.addEventListener('push', (event) => {
     if (event.data) data.body = event.data.text();
   }
 
+  const page = String(data.url || 'index.html');
+  const icon = page.includes('admin.html') ? 'icon-admin.png'
+             : (page.includes('stats.html') ? 'icon-stats.png' : 'icon-192.png');
   event.waitUntil(self.registration.showNotification(data.title, {
     body:  data.body,
-    icon:  'icon-192.png',
-    badge: 'icon-192.png',
+    icon:  icon,
+    badge: icon,
     data:  { url: data.url },
     vibrate: [80, 40, 80],
     tag: data.tag,          // 同 tag 會互相取代，避免洗版

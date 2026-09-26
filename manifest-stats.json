@@ -1,0 +1,15 @@
+{
+  "id": "./stats.html",
+  "name": "台灣物理學會 行政室出勤通知",
+  "short_name": "行政室出勤",
+  "start_url": "stats.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070A12",
+  "theme_color": "#070A12",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-stats.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-stats-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

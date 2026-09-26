@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0A0D14">
+<meta name="theme-color" content="#070A12">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="加班休假檢視">
+<meta name="apple-mobile-web-app-title" content="行政室出勤">
+<link rel="manifest" href="manifest-stats.json">
 <link rel="apple-touch-icon" href="icon-stats.png">
 <link rel="icon" href="icon-stats.png">
-<title>加班休假檢視系統</title>
+<title>行政室出勤通知</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -289,14 +290,27 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
   border-bottom:1px solid var(--line)}
 @media(max-width:760px){ .filters{grid-template-columns:1fr 1fr} }
 
+
+/* ===== 董事會首頁 ===== */
+.board-status{padding:24px;font-size:20px;font-weight:700;color:var(--ok)}
+.board-status.has-out{color:var(--gold-b)}
+.board-list .appl:last-child{border-bottom:none}
+.activity{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.05)}
+.activity:last-child{border-bottom:none}
+.activity .at{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.activity .at b{font-size:14.5px}
+.activity .when{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--dim2)}
+.activity .body{font-size:13px;color:var(--dim);margin-top:4px;line-height:1.65}
+
 </style>
+<link rel="stylesheet" href="premium.css?v=1">
 </head>
-<body>
+<body class="stats-page">
 <section id="gate">
   <div class="gate-in">
     <div class="brand">TPS · 行政室</div>
-    <h1>加班休假檢視系統</h1>
-    <p class="gsub">社團法人台灣物理學會<br>查看行政室同仁的請假申請與核准狀況。</p>
+    <h1>行政室出勤通知</h1>
+    <p class="gsub">社團法人台灣物理學會<br>快速查看今天與近期的行政室出勤狀況。</p>
     <div id="gErr" class="err hide"></div>
     <div class="field"><input type="password" id="gPw" placeholder="檢視密碼"></div>
     <button class="btn" id="gBtn">進入</button>
@@ -305,12 +319,30 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 
 <div id="app" class="hide">
 <header class="top"><div class="tin">
-  <div><div class="sub">TPS · 行政室</div><div class="ttl">加班休假檢視系統</div></div>
-  <button class="lock" id="lockBtn"><span id="lockIc">🔒</span><span id="lockTx">完整資料</span></button>
+  <div><div class="sub">TPS · 行政室</div><div class="ttl">行政室出勤通知</div></div>
+  <button class="lock" id="lockBtn" type="button" aria-haspopup="dialog" aria-expanded="false">
+    <span class="lock-ic" id="lockIc">🔒</span><span id="lockTx">記帳資料</span>
+  </button>
 </div></header>
 
+<div class="sheet-backdrop hide" id="lv2Sheet" role="presentation">
+  <section class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="lv2Title">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-icon" aria-hidden="true">⌁</div>
+    <h2 id="lv2Title">解鎖記帳資料</h2>
+    <p>僅提供受信任的記帳人員使用。解鎖後可查看假別、時數、每月統計與匯出 Excel。</p>
+    <label class="lb" for="lv2Pw">第二層密碼</label>
+    <input type="password" id="lv2Pw" autocomplete="current-password" inputmode="numeric" placeholder="輸入第二層密碼">
+    <div id="lv2Err" class="err hide" role="alert"></div>
+    <div class="sheet-actions">
+      <button class="btn ghost" id="lv2Cancel" type="button">取消</button>
+      <button class="btn" id="lv2Submit" type="button">解鎖</button>
+    </div>
+  </section>
+</div>
+
 <div class="nav" id="nav">
-  <button data-p="Cal" aria-selected="true">請假月曆</button>
+  <button data-p="Cal" aria-selected="true">出勤總覽</button>
   <button data-p="Sum" aria-selected="false" class="lv2 hide">年度總表</button>
   <button data-p="Bal" aria-selected="false" class="lv2 hide">目前時數</button>
   <button data-p="Ot" aria-selected="false" class="lv2 hide">加班</button>
@@ -322,6 +354,21 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 <main>
   <!-- 第一層：月曆 -->
   <div id="pCal">
+    <div class="card">
+      <div class="chd"><h2>今天行政室</h2><span class="unit" id="todayLabel"></span></div>
+      <div id="todayBoard"><div class="empty">載入中…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="chd"><h2>近期請假</h2><span class="unit">未來 30 天</span></div>
+      <div class="board-list" id="upcomingBoard"><div class="empty">載入中…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="chd"><h2>最近動態</h2><span class="unit" id="recentCnt"></span></div>
+      <div id="recentBoard"><div class="empty">目前沒有動態。</div></div>
+    </div>
+
     <div class="mnav">
       <button id="mPrev" aria-label="上個月">‹</button>
       <div class="mtitle" id="calTitle">—</div>
@@ -351,7 +398,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
       <div id="applList"><div class="empty">這個月沒有請假申請。</div></div>
     </div>
 
-    <div class="card">
+    <div class="card hide">
       <div class="chd"><h2>本月加班</h2><span class="unit" id="otmCnt"></span></div>
       <div id="otmList"><div class="empty">這個月沒有加班申請。</div></div>
     </div>
@@ -407,6 +454,11 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
   <!-- 通知 -->
   <div id="pNoti" class="hide">
     <div class="card">
+      <div class="chd"><h2>通知紀錄</h2><span class="unit" id="statsNotiCnt"></span></div>
+      <div id="statsNotiList"><div class="empty">目前沒有通知。</div></div>
+    </div>
+
+    <div class="card">
       <div class="chd"><h2>通知設定</h2></div>
       <div class="cbd">
         <div id="notiState" class="info"></div>
@@ -457,6 +509,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="shared.js"></script>
@@ -472,20 +525,15 @@ if(!window.TPS){
     'onclick="location.reload(true)">重新載入</button></div>';
   throw new Error('shared.js 未載入');
 }
-/* 後台密鑰：Firestore 規則會檢查這把鑰匙。
-   換鑰匙時，admin.html、stats.html、firestore.rules 三邊要同時改。 */
-var T_KEY = 'tps-admin-8f3a2c91e7';
-window.TPS.setAdminKey(T_KEY);
 
 var T = window.TPS, el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.roundHalf;
 T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'error'); });
 
-var LV2_KEY = 'tps.stats.lv2';
-/* 第二層密碼（完整資料）。跟秘書長後台的密碼分開，
-   財務只拿到這一組，拿不到後台。 */
+var LV2_KEY = 'tps.stats.lv2.session';
+/* 記帳層密碼與一般檢視密碼分開；此頁仍維持唯讀。 */
 var LV2_PW = '04191972';
 var S = { page:'Cal', lv2:false, picked:null, statsPw:'physics', statsEpoch:0, y:new Date().getFullYear(), m:new Date().getMonth(),
-          accounts:[], leaves:[], ots:[], loaded:false };
+          accounts:[], leaves:[], ots:[], notices:[], unsub:[], loaded:false };
 
 function showErr(id,msg){ var b=el('#'+id);
   if(!msg){ b.classList.add('hide'); return; } b.textContent=msg; b.classList.remove('hide'); }
@@ -508,38 +556,64 @@ el('#gPw').addEventListener('keydown', function(e){ if(e.key==='Enter') el('#gBt
 function enter(){
   el('#gate').classList.add('hide');
   el('#app').classList.remove('hide');
-  try { if(localStorage.getItem(LV2_KEY) === '1') unlock(true); }
-  catch(e){ console.warn('[stats] 讀取解鎖狀態失敗', e); }
+  try { if(sessionStorage.getItem(LV2_KEY) === '1') unlock(true); }
+  catch(e){ console.warn('[stats] 讀取記帳解鎖狀態失敗', e); }
   loadAll();
 }
 
-/* ---------- 第二層解鎖 ---------- */
+/* ---------- 第二層：受信任記帳人員 ---------- */
 function unlock(on){
   S.lv2 = on;
   el('#lockIc').textContent = on ? '🔓' : '🔒';
-  el('#lockTx').textContent = on ? '完整資料（已解鎖）' : '完整資料';
+  el('#lockTx').textContent = on ? '記帳資料 · 已解鎖' : '記帳資料';
   el('#lockBtn').classList.toggle('on', on);
+  el('#lockBtn').setAttribute('aria-expanded', on ? 'true' : 'false');
   Array.prototype.forEach.call(document.querySelectorAll('.lv2'), function(b){
     b.classList.toggle('hide', !on);
   });
-  try { on ? localStorage.setItem(LV2_KEY,'1') : localStorage.removeItem(LV2_KEY); }
-  catch(e){ console.warn('[stats] 寫入解鎖狀態失敗', e); }
-  if(!on && S.page !== 'Cal') go('Cal');
-  /* 這裡刻意不呼叫 adminLogin —— stats 全程唯讀，
-     修改和刪除只能在秘書長後台做。 */
+  try { on ? sessionStorage.setItem(LV2_KEY,'1') : sessionStorage.removeItem(LV2_KEY); }
+  catch(e){ console.warn('[stats] 寫入記帳解鎖狀態失敗', e); }
+  if(!on && S.page !== 'Cal' && S.page !== 'Noti') go('Cal');
+}
+function openLv2Sheet(){
+  showErr('lv2Err','');
+  el('#lv2Pw').value = '';
+  el('#lv2Sheet').classList.remove('hide');
+  el('#lockBtn').setAttribute('aria-expanded','true');
+  setTimeout(function(){ el('#lv2Pw').focus(); }, 80);
+}
+function closeLv2Sheet(){
+  el('#lv2Sheet').classList.add('hide');
+  el('#lockBtn').setAttribute('aria-expanded', S.lv2 ? 'true' : 'false');
+}
+function submitLv2(){
+  if(el('#lv2Pw').value !== LV2_PW){
+    showErr('lv2Err','第二層密碼不正確。');
+    el('#lv2Pw').select();
+    return;
+  }
+  unlock(true);
+  closeLv2Sheet();
+  toast('已解鎖記帳資料','success');
+  renderAll();
 }
 el('#lockBtn').onclick = function(){
   if(S.lv2){
-    if(!confirm('鎖回去？之後要看完整資料需要再輸入一次密碼。')) return;
-    unlock(false); return;
+    unlock(false);
+    toast('記帳資料已鎖定','success');
+    return;
   }
-  var pw = prompt('輸入完整資料的密碼');
-  if(pw === null) return;
-  if(pw !== LV2_PW) return toast('密碼不正確','error');
-  unlock(true);
-  toast('已解鎖完整資料','success');
-  renderAll();
+  openLv2Sheet();
 };
+el('#lv2Cancel').onclick = closeLv2Sheet;
+el('#lv2Submit').onclick = submitLv2;
+el('#lv2Pw').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') submitLv2();
+  if(e.key === 'Escape') closeLv2Sheet();
+});
+el('#lv2Sheet').addEventListener('click', function(e){
+  if(e.target === el('#lv2Sheet')) closeLv2Sheet();
+});
 
 /* ---------- 分頁 ---------- */
 function go(p){
@@ -564,31 +638,82 @@ Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function(
 
 /* ---------- 載入 ---------- */
 function loadAll(){
-  return Promise.all([
-    T.listAccounts(),
-    T.loadCalendar(),
-    T.db.collection(T.COL.leave).get(),
-    T.db.collection(T.COL.overtime).get()
-  ]).then(function(r){
-    S.accounts = r[0];
-    S.leaves = snap(r[2]); S.ots = snap(r[3]);
-    S.loaded = true;
+  S.unsub.forEach(function(f){ f(); }); S.unsub = [];
+  return Promise.all([T.listAccounts(), T.loadCalendar()]).then(function(r){
+    S.accounts = r[0]; S.loaded = true;
     var opts = '<option value="">全部人員</option>' + S.accounts.map(function(a){
       return '<option value="' + esc(a.email) + '">' + esc(a.name || a.email) + '</option>'; }).join('');
     el('#fWho').innerHTML = opts;
     el('#otWho').innerHTML = opts;
-    var yrs = {}; S.leaves.concat(S.ots).forEach(function(x){
-      var d = T.toDate(x.startAt || x.date); if(!isNaN(d)) yrs[d.getFullYear()] = 1; });
-    yrs[new Date().getFullYear()] = 1;
-    el('#sumYear').innerHTML = Object.keys(yrs).sort().reverse()
-      .map(function(y){ return '<option value="' + y + '">' + y + ' 年</option>'; }).join('');
-    el('#sumYear').value = new Date().getFullYear();
     el('#sumYear').onchange = renderSummary;
-    renderAll();
+    S.unsub.push(T.watchOfficeLeaves(function(list){
+      S.leaves = list; refreshYears(); renderAll();
+    }));
+    S.unsub.push(T.db.collection(T.COL.overtime).onSnapshot(function(s){
+      S.ots = snap(s); refreshYears(); renderAll();
+    }, function(e){ toast('加班資料讀取失敗：' + e.message,'error'); }));
+    S.unsub.push(T.watchScopeNotices('stats', function(list){
+      S.notices = list; renderActivities(); renderNoticeFeed();
+    }));
   }).catch(function(e){ toast('載入失敗：' + e.message, 'error'); });
 }
+function refreshYears(){
+  var cur = el('#sumYear').value, yrs = {};
+  S.leaves.concat(S.ots).forEach(function(x){
+    var d = T.toDate(x.startAt || x.date); if(!isNaN(d)) yrs[d.getFullYear()] = 1; });
+  yrs[new Date().getFullYear()] = 1;
+  el('#sumYear').innerHTML = Object.keys(yrs).sort().reverse()
+    .map(function(y){ return '<option value="' + y + '">' + y + ' 年</option>'; }).join('');
+  el('#sumYear').value = yrs[cur] ? cur : new Date().getFullYear();
+}
 function snap(s){ var o=[]; s.forEach(function(d){ var x=d.data(); x.id=d.id; o.push(x); }); return o; }
-function renderAll(){ renderCal(); if(S.page!=='Cal') go(S.page); }
+function renderAll(){ renderCal(); renderBoardDashboard(); if(S.page!=='Cal') go(S.page); }
+
+/* ---------- 董事會首頁 ---------- */
+function renderBoardDashboard(){
+  var now = new Date(), start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var tomorrow = new Date(start); tomorrow.setDate(tomorrow.getDate() + 1);
+  var limit = new Date(start); limit.setDate(limit.getDate() + 31);
+  el('#todayLabel').textContent = T.fmtDate(start);
+  var active = S.leaves.filter(function(x){
+    if(x.status !== 'approved' && x.status !== 'pending') return false;
+    return T.toDate(x.startAt) < tomorrow && T.toDate(x.endAt) > start;
+  }).sort(function(a,b){ return T.toDate(a.startAt) - T.toDate(b.startAt); });
+  var today = el('#todayBoard');
+  if(!active.length){
+    today.innerHTML = '<div class="board-status">✓ 今天目前全員在班</div>';
+  } else {
+    today.innerHTML = '<div class="board-status has-out">今天有 ' + active.length + ' 位同仁不在</div>' +
+      active.map(function(x){ return applRow(x, false); }).join('');
+  }
+  var upcoming = S.leaves.filter(function(x){
+    if(x.status !== 'approved' && x.status !== 'pending') return false;
+    var s = T.toDate(x.startAt); return s >= tomorrow && s < limit;
+  }).sort(function(a,b){ return T.toDate(a.startAt) - T.toDate(b.startAt); });
+  el('#upcomingBoard').innerHTML = upcoming.length
+    ? upcoming.map(function(x){ return applRow(x, false); }).join('')
+    : '<div class="empty">未來 30 天目前沒有請假。</div>';
+  renderActivities();
+}
+function activityHtml(n){
+  return '<div class="activity"><div class="at"><b>' + esc(n.title || '行政室動態') + '</b>' +
+    '<span class="when">' + T.fmtStamp(n.createdAt) + '</span></div>' +
+    '<div class="body">' + esc(n.body || '') + '</div></div>';
+}
+function renderActivities(){
+  var list = (S.notices || []).slice(0, 6);
+  el('#recentCnt').textContent = list.length ? list.length + ' 則' : '';
+  el('#recentBoard').innerHTML = list.length
+    ? list.map(activityHtml).join('')
+    : '<div class="empty">目前沒有動態。</div>';
+}
+function renderNoticeFeed(){
+  var list = (S.notices || []).slice(0, 50);
+  el('#statsNotiCnt').textContent = list.length ? list.length + ' 則' : '';
+  el('#statsNotiList').innerHTML = list.length
+    ? list.map(activityHtml).join('')
+    : '<div class="empty">目前沒有通知。</div>';
+}
 
 /* ---------- 月曆（第一層看得到的全部） ---------- */
 var WD = ['日','一','二','三','四','五','六'];
@@ -725,7 +850,7 @@ function otRow2(x){
     h += '<span class="rng" style="color:var(--gold-b)">' + x.hours + ' 小時' +
       (x.isDispatch ? '（核派，補休加倍）' : '') + '</span>';
   h += '<span class="tag ' + x.status + ' st">' + T.STATUS_LABEL[x.status] + '</span>';
-  if(x.reason) h += '<div class="rsn">事由：' + esc(x.reason) + '</div>';
+  if(S.lv2 && x.reason) h += '<div class="rsn">事由：' + esc(x.reason) + '</div>';
   h += '<div class="tl">申請 ' + T.fmtStamp(x.createdAt);
   if(x.status === 'approved' || x.status === 'rejected')
     h += '　·　' + (x.status==='approved'?'同意':'駁回') + ' ' + T.fmtStamp(x.reviewedAt);
@@ -924,7 +1049,7 @@ function detCard(x){
       return s.ym + ' ' + s.hours + 'h'; }).join('、') + '</div>';
   if(!isLeave && x.bonusHours > 0)
     h += '<div class="rmeta">核派加倍，實得 ' + roundHalf(x.hours + x.bonusHours) + ' 小時</div>';
-  if(x.reason) h += '<div class="rmeta">事由：' + esc(x.reason) + '</div>';
+  if(S.lv2 && x.reason) h += '<div class="rmeta">事由：' + esc(x.reason) + '</div>';
   if(isLeave && x.isLate) h += '<div class="rmeta">事後補請：' + esc(x.lateReason || '未填') + '</div>';
 
   h += '<div class="rtrail">送出　<b>' + T.fmtStamp(x.createdAt) + '</b>';
@@ -997,6 +1122,7 @@ function notiState(){
   } catch(e){ console.warn('[stats] 讀取通知狀態失敗', e); return { on:false }; }
 }
 function renderNoti(){
+  renderNoticeFeed();
   var st = notiState();
   var box = el('#notiState');
   if(st.on){
