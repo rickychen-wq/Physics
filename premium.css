@@ -548,3 +548,145 @@ html,body,#app{min-height:100%;min-height:100dvh}
   pointer-events:none;
 }
 .staff-page .tabbar button{min-height:50px;padding:6px 4px 5px;z-index:1}
+
+/* ===== v4 high-legibility typography =====
+   Older users asked for brighter, larger text without changing the dark glass identity. */
+:root{
+  --txt:#ffffff;
+  --dim:#d4ddeb;
+  --dim2:#acb8cc;
+  --gold-b:#c8dcff;
+  --line:rgba(202,220,255,.22);
+}
+
+body{
+  font-size:16px;
+  line-height:1.7;
+  font-weight:500;
+  letter-spacing:.012em;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,b,strong{font-weight:780}
+input,select,textarea{font-size:17px;font-weight:600;color:#fff}
+::placeholder{color:#9eabc0;opacity:1}
+.btn{font-size:16px;font-weight:780}
+.btn.sm{font-size:14.5px}
+.btn.ghost{color:#e0e6f1}
+.chd h2{font-size:17px;font-weight:800;letter-spacing:.01em}
+.unit{font-size:12px;color:#bac5d8;letter-spacing:.06em}
+label.lb{font-size:14px;font-weight:700;color:#eef3fb}
+.hint,.note{font-size:13.5px;color:var(--dim);line-height:1.75}
+.info,.err{font-size:14.5px;line-height:1.75}
+.empty{font-size:15px;color:var(--dim);font-weight:550}
+.tag,.flg,.st,.paid,.unpaid,.termtag,.imported{font-size:12px}
+#gate .brand{font-size:12.5px;color:#a9c8ff}
+#gate .gsub{font-size:15px;color:var(--dim);line-height:1.75}
+#gate .gfoot{font-size:13.5px;color:var(--dim);line-height:1.75}
+.top .sub{font-size:11.5px;color:#9fc1ff!important}
+.top .ttl{font-size:18px;font-weight:800}
+.sheet-card>p{font-size:15px;color:var(--dim)}
+
+/* Staff app: primary actions and records. */
+.staff-page .who .nm{font-size:17px;font-weight:800}
+.staff-page .who .em{font-size:13px;color:var(--dim)}
+.staff-page .tabbar button{font-size:13.5px;font-weight:700;color:#aebbd0}
+.staff-page .bcell .k{font-size:13.5px;color:var(--dim)}
+.staff-page .bcell .v small{font-size:13px;color:var(--dim);font-weight:550}
+.staff-page .carry{font-size:13.5px;font-weight:600}
+.staff-page .msec{font-size:12.5px;color:var(--dim)}
+.staff-page .big .t{font-size:17px;font-weight:800}
+.staff-page .quick button,.staff-page .chip{font-size:15px;font-weight:650;color:var(--dim)}
+.staff-page .sw{font-size:16px;font-weight:600}
+.staff-page .calc .lab{font-size:14px;color:var(--dim)}
+.staff-page .calc .big2 small{font-size:13px;color:var(--dim);font-weight:550}
+.staff-page .calc .after{font-size:14.5px;color:var(--dim)}
+.staff-page .calhd span{font-size:15.5px}
+.staff-page #cHead div{font-size:12px;color:var(--dim)}
+.staff-page .cd{font-size:14px}
+.staff-page .clegend{font-size:12.5px;color:var(--dim)}
+.staff-page .rtype{font-size:16px}
+.staff-page .rw,.staff-page .trail{font-size:13.5px;color:var(--dim)}
+.staff-page .noti .t{font-size:16px}
+.staff-page .noti .b{font-size:14.5px;color:var(--dim)}
+.staff-page .noti .w{font-size:12.5px;color:var(--dim2)}
+.staff-page .office-row .office-name{font-size:16px}
+.staff-page .office-row .office-time{font-size:14px;color:var(--dim)}
+.staff-page .editbox label{font-size:13.5px;color:var(--dim)}
+.staff-page .pxr .who{font-size:17px}
+.staff-page .pxr .dt{font-size:14px;color:var(--dim)}
+.staff-page .kv{font-size:14.5px}
+
+/* Admin app: review data, account balances and password guidance. */
+.admin-page .drawer h3{font-size:13px;color:#a9c8ff}
+.admin-page .drawer button{font-size:16px;font-weight:650}
+.admin-page .inm{font-size:17px}
+.admin-page .ity{font-size:15.5px}
+.admin-page .im,.admin-page .inn{font-size:14px;color:var(--dim)}
+.admin-page .bonus{font-size:14px;color:var(--dim)}
+.admin-page .sw2{font-size:15.5px;font-weight:600}
+.admin-page .ahd b{font-size:17px}
+.admin-page .ahd .em{font-size:13px;color:var(--dim)}
+.admin-page .bx .k{font-size:13px;color:var(--dim)}
+.admin-page .bx .ed{font-size:12px;color:var(--dim2)}
+.admin-page .law{font-size:14px;color:var(--dim)}
+.admin-page .cal .d{font-size:15px}
+.admin-page .cal .lb2{font-size:14.5px;color:var(--dim)}
+.admin-page .swipehint,.admin-page .secline{font-size:13px;color:var(--dim)}
+.admin-page .today .nm2{font-size:16.5px}
+.admin-page .today .ty2{font-size:15px}
+.admin-page .today .tm{font-size:14px;color:var(--dim)}
+.admin-page .today.none{font-size:15px;color:var(--dim)}
+.admin-page .waitmsg{font-size:14px}
+.admin-page .mt .k,.admin-page .pgrid .px .k{font-size:13px;color:var(--dim)}
+.admin-page .mt .v small{font-size:12px;color:var(--dim)}
+.admin-page .mnone{font-size:14.5px;color:var(--dim)}
+.admin-page .payhd .rate{font-size:13.5px;color:var(--dim)}
+.admin-page .paydet,.admin-page .stl .r,.admin-page .trail{font-size:14px;color:var(--dim)}
+.admin-page .cred-copy b{font-size:15px}
+.admin-page .cred-copy span{font-size:13px;color:var(--dim)}
+.admin-page .cred-chip{font-size:12px}
+.admin-page .cred-block-title h3{font-size:17px}
+.admin-page .cred-role{font-size:13.5px}
+.admin-page .cred-desc,.admin-page .cred-alert{font-size:14.5px}
+
+/* Board and finance view: navigation, calendar, tables and activity. */
+.stats-page .tin .ttl{font-size:18px}
+.stats-page .lock{font-size:14px;color:var(--dim);font-weight:650}
+.stats-page .nav button{font-size:15.5px;font-weight:750;color:var(--dim)}
+.stats-page .hcell .k{font-size:14px;color:var(--dim);font-weight:650}
+.stats-page .hcell .v small{font-size:13.5px;color:var(--dim);font-weight:550}
+.stats-page .hcell .s{font-size:13.5px;color:var(--dim)}
+.stats-page .chd .note{font-size:13.5px;color:var(--dim)}
+.stats-page .chd select{font-size:15px}
+.stats-page .mgrid .wd{font-size:12.5px;color:var(--dim)}
+.stats-page .day .n{font-size:14px;color:var(--dim);font-weight:650}
+.stats-page .more{font-size:10.5px;color:var(--dim)}
+.stats-page .pill{font-size:11.5px;font-weight:700}
+.stats-page .appl .who{font-size:17px}
+.stats-page .appl .rng{font-size:14.5px}
+.stats-page .appl .rsn,.stats-page .appl .tl{font-size:14px;color:var(--dim)}
+.stats-page table{font-size:14.5px}
+.stats-page th{font-size:13px;color:var(--dim);font-weight:700}
+.stats-page td{font-weight:550;color:var(--dim)}
+.stats-page .legend{font-size:13.5px;color:var(--dim)}
+.stats-page .mt .k{font-size:13px;color:var(--dim)}
+.stats-page .mt .v small{font-size:12px;color:var(--dim)}
+.stats-page .mnone{font-size:14.5px;color:var(--dim)}
+.stats-page .rtop .nm{font-size:17px}
+.stats-page .rtop .ty{font-size:15px}
+.stats-page .rtop .hr{font-size:16px}
+.stats-page .rmeta{font-size:14px;color:var(--dim)}
+.stats-page .rtrail{font-size:13.5px;color:var(--dim)}
+.stats-page .egrid label{font-size:13.5px;color:var(--dim)}
+.stats-page .activity .at b{font-size:16px}
+.stats-page .activity .when{font-size:12px;color:var(--dim2)}
+.stats-page .activity .body{font-size:14.5px;color:var(--dim)}
+
+@media(max-width:700px){
+  body{font-size:16px}
+  .chd h2{font-size:16.5px}
+  .stats-page .tin .ttl{font-size:17px}
+  .stats-page .lock{font-size:13px}
+  .stats-page .nav button{font-size:15px}
+}
