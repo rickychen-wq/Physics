@@ -1064,10 +1064,14 @@ function renderDetail(){
 function detCard(x){
   var d = document.createElement('div'); d.className = 'rec';
   var isLeave = x.kind === 'leave';
+  var isLegacy = x.source === 'legacy-import' && x.summaryYm;
   var label = isLeave
     ? ((x.type==='other' && x.otherType) ? x.otherType : T.leaveTypeLabel(x.type))
-    : (x.isDispatch ? '加班（核派）' : '加班');
-  var when = isLeave
+    : (isLegacy ? (x.bonusHours > 0 ? '加班（月統計，含核派增額）' : '加班（月統計）')
+                : (x.isDispatch ? '加班（核派）' : '加班'));
+  var when = isLegacy
+    ? x.summaryYm.replace('-', ' 年 ') + ' 月彙總（原試算表缺少逐筆日期、時段與原因）'
+    : isLeave
     ? T.fmtDateTime(x.startAt) + ' → ' + T.fmtDateTime(x.endAt)
     : T.fmtDate(x.date) + '　' + T.fmtTime(x.startAt) + ' – ' + T.fmtTime(x.endAt);
 
@@ -1086,11 +1090,14 @@ function detCard(x){
   if(S.lv2 && x.reason) h += '<div class="rmeta">事由：' + esc(x.reason) + '</div>';
   if(isLeave && x.isLate) h += '<div class="rmeta">事後補請：' + esc(x.lateReason || '未填') + '</div>';
 
-  h += '<div class="rtrail">送出　<b>' + T.fmtStamp(x.createdAt) + '</b>';
-  if(x.status==='approved'||x.status==='rejected')
+  h += isLegacy
+    ? '<div class="rtrail">舊資料匯入　<b>' + T.fmtStamp(x.importedAt || x.createdAt) + '</b>' +
+      '<br>' + esc(x.sourceNote || '原試算表僅提供月統計，沒有逐筆明細。')
+    : '<div class="rtrail">送出　<b>' + T.fmtStamp(x.createdAt) + '</b>';
+  if(!isLegacy && (x.status==='approved'||x.status==='rejected'))
     h += '<br>' + (x.status==='approved'?'同意':'駁回') + '　<b>' + T.fmtStamp(x.reviewedAt) +
          '</b>　' + esc(x.reviewedBy||'');
-  if(x.status==='cancelled') h += '<br>已撤銷';
+  if(!isLegacy && x.status==='cancelled') h += '<br>已撤銷';
   if(x.adminNote) h += '<br>註記：' + esc(x.adminNote);
   if(x.editedBy) h += '<br>最後修改　<b>' + T.fmtStamp(x.editedAt) + '</b>　' + esc(x.editedBy);
   h += '</div>';
@@ -1219,8 +1226,8 @@ el('#expBtn').onclick = function(){
     lv.sort(function(a,b){ return String(a['開始']).localeCompare(String(b['開始'])); });
     ot.sort(function(a,b){ return String(a['日期']).localeCompare(String(b['日期'])); });
 
-    XLSX.utils.book_append_sheet(wb, sheet(lv, [12,8,14,8,18,18,8,10,16,10,20,20,18,18,10,20,18,16,22]), '請假紀錄');
-    XLSX.utils.book_append_sheet(wb, sheet(ot, [12,8,12,8,8,8,10,8,10,8,34,10,18,18,10,20,18,16,22]), '加班紀錄');
+    XLSX.utils.book_append_sheet(wb, sheet(lv, [12,8,14,8,18,18,8,10,16,10,20,20,18,18,10,20,18,16,26,42]), '請假紀錄');
+    XLSX.utils.book_append_sheet(wb, sheet(ot, [12,8,18,12,12,8,10,8,10,8,34,10,18,18,10,20,18,16,26,42]), '加班紀錄');
 
     return Promise.all(S.accounts.map(function(a){
       return T.getBalance(a.email).then(function(bal){
@@ -1386,42 +1393,50 @@ function sheet(rows, widths){
   return ws;
 }
 function leaveRow(x, mark){
+  var legacy = x.source === 'legacy-import' && x.summaryYm;
+  var note = legacy ? (x.sourceNote || '原試算表僅提供月統計，缺少逐筆日期、時段與原因。') : '';
   return {
     '姓名': x.name, '任期': x.term || 1,
     '假別': (x.type==='other' && x.otherType) ? x.otherType : T.leaveTypeLabel(x.type),
     '時數': x.hours,
-    '開始': T.fmtStamp(x.startAt), '結束': T.fmtStamp(x.endAt),
+    '開始': legacy ? x.summaryYm + '（月統計）' : T.fmtStamp(x.startAt),
+    '結束': legacy ? '原表缺少逐筆日期／時段' : T.fmtStamp(x.endAt),
     '扣特休': x.annualHours || 0, '扣補休': x.compHours || 0,
     '分月計入': (x.segments||[]).map(function(s){ return s.ym + ' ' + s.hours + 'h'; }).join('、'),
     '狀態': T.STATUS_LABEL[x.status] || x.status,
     '職務代理人': x.needsProxy ? (x.proxyName || '') +
       (x.proxyStatus==='accepted' ? '（已確認）' : x.proxyStatus==='declined' ? '（已駁回）' : '（待確認）') : '',
     '事後補請': x.isLate ? ('是：' + (x.lateReason||'')) : '否',
-    '送出時間': T.fmtStamp(x.createdAt),
-    '審核時間': x.reviewedAt ? T.fmtStamp(x.reviewedAt) : '',
+    '送出時間': legacy ? '' : T.fmtStamp(x.createdAt),
+    '審核時間': legacy ? '' : (x.reviewedAt ? T.fmtStamp(x.reviewedAt) : ''),
     '審核人': x.reviewedBy || '', '註記': x.adminNote || '',
     '最後修改': x.editedAt ? T.fmtStamp(x.editedAt) : '',
     '修改人': x.editedBy || (x.editedByOwner ? '申請人自行修改' : ''),
-    '備註': mark
+    '資料來源': legacy ? '原試算表月統計（不含逐筆明細）' : '線上系統',
+    '備註': [note, mark].filter(Boolean).join('；')
   };
 }
 function otRow(x, mark){
+  var legacy = x.source === 'legacy-import' && x.summaryYm;
+  var note = legacy ? (x.sourceNote || '原試算表僅提供月統計，缺少逐筆日期、時段與原因。') : '';
   return {
     '姓名': x.name, '任期': x.term || 1,
-    '日期': T.fmtDate(x.date),
-    '起': T.fmtTime(x.startAt), '迄': T.fmtTime(x.endAt),
+    '日期': legacy ? x.summaryYm + '（月統計）' : T.fmtDate(x.date),
+    '起': legacy ? '原表缺少' : T.fmtTime(x.startAt),
+    '迄': legacy ? '原表缺少' : T.fmtTime(x.endAt),
     '時數': x.hours, '核派加班': x.isDispatch ? '是' : '否',
     '增額': x.bonusHours || 0,
     '補休實得': roundHalf((x.hours||0) + (x.bonusHours||0)),
     '假日': x.isWeekend ? '是' : '否',
-    '事由': x.reason || '',
+    '事由': legacy ? '原表缺少逐筆事由' : (x.reason || ''),
     '狀態': T.STATUS_LABEL[x.status] || x.status,
-    '送出時間': T.fmtStamp(x.createdAt),
-    '審核時間': x.reviewedAt ? T.fmtStamp(x.reviewedAt) : '',
+    '送出時間': legacy ? '' : T.fmtStamp(x.createdAt),
+    '審核時間': legacy ? '' : (x.reviewedAt ? T.fmtStamp(x.reviewedAt) : ''),
     '審核人': x.reviewedBy || '', '註記': x.adminNote || '',
     '最後修改': x.editedAt ? T.fmtStamp(x.editedAt) : '',
     '修改人': x.editedBy || '',
-    '備註': mark
+    '資料來源': legacy ? '原試算表月統計（不含逐筆明細）' : '線上系統',
+    '備註': [note, mark].filter(Boolean).join('；')
   };
 }
 

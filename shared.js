@@ -616,6 +616,7 @@ function handoverAccount(email, newName, hireDate) {
       resignDate: null,
       active: true,
       pwHash: hashPw(DEFAULT_PW),
+      lastGrantAnniv: null,
       prevName: acc.name || '',
       termStartAt: serverTimestamp()
     }).then(function () {
@@ -626,6 +627,14 @@ function handoverAccount(email, newName, hireDate) {
         annualUsedYTD: 0, compUsedYTD: 0, compEarnedYTD: 0,
         expiredAnnualHours: 0, expiredCompHours: 0,
         updatedAt: serverTimestamp()
+      });
+    }).then(function () {
+      // 固定職位信箱換人後，舊手機不能繼續收到新任的通知。
+      return db.collection(COL.push).where('scope', '==', em).get().then(function (snap) {
+        if (snap.empty) return null;
+        var batch = db.batch();
+        snap.forEach(function (doc) { batch.delete(doc.ref); });
+        return batch.commit();
       });
     }).then(function () {
       return writeAudit('account.handover', em,

@@ -995,39 +995,49 @@ function renderRecs(){
 function recCard(r){
   var d = document.createElement('div'); d.className = 'rec';
   var isLeave = r.kind === 'leave';
+  var isLegacy = r.source === 'legacy-import' && r.summaryYm;
   var label = isLeave
     ? ((r.type === 'other' && r.otherType) ? r.otherType : T.leaveTypeLabel(r.type))
-    : '加班';
-  var when = isLeave
+    : (isLegacy ? '加班（月統計）' : '加班');
+  var when = isLegacy
+    ? r.summaryYm.replace('-', ' 年 ') + ' 月彙總（原試算表缺少逐筆日期、時段與原因）'
+    : isLeave
     ? T.fmtDateTime(r.startAt) + ' → ' + T.fmtDateTime(r.endAt)
     : T.fmtDate(r.date) + '　' + T.fmtTime(r.startAt) + ' – ' + T.fmtTime(r.endAt);
 
   var h = '<div class="rtop"><span class="rtype">' + esc(label) + '</span>' +
     '<span class="tag ' + r.status + '">' + T.STATUS_LABEL[r.status] + '</span>' +
+    (isLegacy ? '<span class="termtag">舊資料</span>' : '') +
     '<span class="rh">' + r.hours + ' 小時</span></div>' +
     '<div class="rw">' + when + '</div>';
   if(isLeave && r.segments && r.segments.length > 1)
     h += '<div class="rw">跨月：' + r.segments.map(function(s){
       return s.ym + ' ' + s.hours + 'h'; }).join('、') + '</div>';
-  if(!isLeave && r.isDispatch)
+  if(!isLeave && isLegacy && (r.bonusHours || 0) > 0)
+    h += '<div class="rw">本月核派增額 +' + roundHalf(r.bonusHours) +
+         ' 小時，補休合計 ' + roundHalf(r.hours + r.bonusHours) + ' 小時</div>';
+  else if(!isLeave && r.isDispatch)
     h += '<div class="rw">核派加班，補休加倍 → 實得 ' +
          roundHalf(r.hours + (r.bonusHours || 0)) + ' 小時</div>';
 
-  var trail = '<div class="trail">送出　<b>' + T.fmtStamp(r.createdAt) + '</b>';
-  if(r.status === 'approved' || r.status === 'rejected')
+  var trail = isLegacy
+    ? '<div class="trail">舊資料匯入　<b>' + T.fmtStamp(r.importedAt || r.createdAt) + '</b>' +
+      '<br>' + esc(r.sourceNote || '原試算表僅提供月統計，沒有逐筆明細。')
+    : '<div class="trail">送出　<b>' + T.fmtStamp(r.createdAt) + '</b>';
+  if(!isLegacy && (r.status === 'approved' || r.status === 'rejected'))
     trail += '<br>' + (r.status === 'approved' ? '同意' : '駁回') + '　<b>' +
       T.fmtStamp(r.reviewedAt) + '</b>　' + esc(r.reviewedBy || '');
-  if(r.status === 'cancelled')
+  if(!isLegacy && r.status === 'cancelled')
     trail += '<br>撤銷　<b>' + T.fmtStamp(r.cancelledAt) + '</b>';
-  if(r.needsProxy && r.proxyStatus === 'waiting')
+  if(!isLegacy && r.needsProxy && r.proxyStatus === 'waiting')
     trail += '<br>等待 ' + esc(r.proxyName || '代理人') + ' 確認代理';
-  else if(r.needsProxy && r.proxyStatus === 'accepted')
+  else if(!isLegacy && r.needsProxy && r.proxyStatus === 'accepted')
     trail += '<br>' + esc(r.proxyName || '代理人') + ' 已確認代理　<b>' +
       T.fmtStamp(r.proxyRespondedAt) + '</b>';
-  else if(r.needsProxy && r.proxyStatus === 'declined')
+  else if(!isLegacy && r.needsProxy && r.proxyStatus === 'declined')
     trail += '<br><span style="color:var(--bad)">' + esc(r.proxyName || '代理人') +
       ' 駁回代理' + (r.proxyNote ? '：' + esc(r.proxyNote) : '') + '</span>';
-  if(r.status === 'pending' && !(r.needsProxy && r.proxyStatus === 'waiting'))
+  if(!isLegacy && r.status === 'pending' && !(r.needsProxy && r.proxyStatus === 'waiting'))
     trail += '<br>等待秘書長審核中';
   if(r.cancelRequest === 'waiting')
     trail += '<br><span style="color:var(--warn)">已申請撤銷，等秘書長處理</span>';

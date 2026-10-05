@@ -1306,7 +1306,7 @@ function doHandover(a){
   if(!confirm('「' + a.email + '」換人接手？\n\n' +
     '現任：' + (a.name || '未設定') + '\n' +
     '這個信箱目前有 ' + lv + ' 筆假單、' + ot + ' 筆加班單。\n\n' +
-    '執行後：時數全部歸零、密碼回到 ' + T.DEFAULT_PW + '。\n' +
+    '執行後：時數全部歸零、密碼回到 ' + T.DEFAULT_PW + '，舊手機通知會移除。\n' +
     '舊紀錄新秘書看不到，但後台的「完整紀錄」查得到。')) return;
   var n = prompt('新任秘書的中文姓名');
   if(n === null || !n.trim()) return;
@@ -1359,7 +1359,7 @@ function loadLog(){
     el('#logCnt').textContent = list.length + ' 筆';
     var box = el('#logList');
     if(!list.length){ box.innerHTML = '<div class="empty">這個範圍沒有紀錄。</div>'; return; }
-    box.innerHTML = '<div class="swipehint">紀錄向左滑可以刪除</div>';
+    box.innerHTML = '<div class="swipehint">一般紀錄向左滑可以刪除；舊表月統計為避免餘額失真，不提供刪除。</div>';
     list.forEach(function(r){ box.appendChild(swipeRow(r)); });
   }).catch(function(e){
     el('#logList').innerHTML = '<div class="empty">載入失敗：' + esc(e.message) + '</div>';
@@ -1372,6 +1372,10 @@ function swipeRow(r){
   var del = document.createElement('button'); del.className = 'del'; del.textContent = '刪除';
   var body = document.createElement('div'); body.className = 'body';
   body.innerHTML = logCard(r);
+  if(r.source === 'legacy-import'){
+    wrap.appendChild(body);
+    return wrap;
+  }
   wrap.appendChild(del); wrap.appendChild(body);
 
   var x0 = null, dx = 0;
@@ -1410,10 +1414,13 @@ function swipeRow(r){
 
 function logCard(r){
   var isLeave = r.kind === 'leave';
+  var isLegacy = r.source === 'legacy-import' && r.summaryYm;
   var label = isLeave
     ? ((r.type==='other' && r.otherType) ? r.otherType : T.leaveTypeLabel(r.type))
-    : '加班';
-  var when = isLeave
+    : (isLegacy ? '加班（月統計）' : '加班');
+  var when = isLegacy
+    ? r.summaryYm.replace('-', ' 年 ') + ' 月彙總（原試算表缺少逐筆日期、時段與原因）'
+    : isLeave
     ? T.fmtDateTime(r.startAt) + ' → ' + T.fmtDateTime(r.endAt)
     : T.fmtDate(r.date) + '　' + T.fmtTime(r.startAt) + ' – ' + T.fmtTime(r.endAt);
   var h = '<div class="rec"><div class="itop">' +
@@ -1421,17 +1428,21 @@ function logCard(r){
     (r.term > 1 ? '<span class="termtag">第 ' + r.term + ' 任</span>' : '') +
     '<span class="ity">' + esc(label) + '</span>' +
     '<span class="tag ' + r.status + '">' + T.STATUS_LABEL[r.status] + '</span>' +
+    (isLegacy ? '<span class="termtag">舊資料</span>' : '') +
     '<span class="ih">' + r.hours + ' 小時</span></div>' +
     '<div class="im">' + when + '</div>';
   if(!isLeave && r.bonusHours > 0) h += '<div class="inn">核派增額 +' + r.bonusHours + ' 小時</div>';
   if(r.reason) h += '<div class="inn">事由：' + esc(r.reason) + '</div>';
-  h += '<div class="trail">送出　<b>' + T.fmtStamp(r.createdAt) + '</b>　' + esc(r.name);
-  if(r.status === 'approved' || r.status === 'rejected')
+  h += isLegacy
+    ? '<div class="trail">舊資料匯入　<b>' + T.fmtStamp(r.importedAt || r.createdAt) + '</b>' +
+      '<br>' + esc(r.sourceNote || '原試算表僅提供月統計，沒有逐筆明細。')
+    : '<div class="trail">送出　<b>' + T.fmtStamp(r.createdAt) + '</b>　' + esc(r.name);
+  if(!isLegacy && (r.status === 'approved' || r.status === 'rejected'))
     h += '<br>' + (r.status === 'approved' ? '同意' : '駁回') + '　<b>' +
       T.fmtStamp(r.reviewedAt) + '</b>　' + esc(r.reviewedBy || '');
-  if(r.status === 'cancelled')
+  if(!isLegacy && r.status === 'cancelled')
     h += '<br>撤銷　<b>' + T.fmtStamp(r.cancelledAt) + '</b>　' + esc(r.cancelledBy || '');
-  if(r.status === 'pending') h += '<br>尚未審核';
+  if(!isLegacy && r.status === 'pending') h += '<br>尚未審核';
   if(r.adminNote) h += '<br>註記：' + esc(r.adminNote);
   return h + '</div></div>';
 }

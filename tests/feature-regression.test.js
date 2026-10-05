@@ -20,6 +20,8 @@ const staff = read('index.html');
 const stats = read('stats.html');
 const calendar = read('calendar-data.js');
 const rules = read('firestore.rules');
+assert.match(shared, /lastGrantAnniv:\s*null/);
+assert.match(shared, /where\('scope',\s*'==',\s*em\)/);
 assert.match(shared, /tps\.session\.v2/);
 assert.match(shared, /acc\.pwHash !== saved\.pwHash/);
 assert.match(shared, /saveSession\(_me\.email, newHash\)/);
