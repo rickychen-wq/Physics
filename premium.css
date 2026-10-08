@@ -690,3 +690,182 @@ label.lb{font-size:14px;font-weight:700;color:#eef3fb}
   .stats-page .lock{font-size:13px}
   .stats-page .nav button{font-size:15px}
 }
+
+/* ===== v5 senior-friendly type and motion =====
+   Raise the real minimum reading size across all three apps, not only titles.
+   Touch feedback uses a brief liquid-light ripple and never delays the action. */
+body{
+  font-size:18px;
+  line-height:1.75;
+  font-weight:520;
+  letter-spacing:.014em;
+}
+input,select,textarea{font-size:18px;font-weight:650;line-height:1.55}
+.btn{font-size:18px;font-weight:800;min-height:50px}
+.btn.sm{font-size:16.5px;min-height:44px}
+.chd h2{font-size:19px;font-weight:820}
+.unit{font-size:14px}
+label.lb{font-size:16px;font-weight:750}
+.hint,.note{font-size:15.5px;line-height:1.8}
+.info,.err{font-size:16px;line-height:1.8}
+.empty{font-size:16.5px}
+.tag,.flg,.st,.paid,.unpaid,.termtag,.imported{font-size:14px;line-height:1.45}
+#gate .brand{font-size:14px}
+#gate .gsub{font-size:17px}
+#gate .gfoot{font-size:15px}
+.top .sub{font-size:14px}
+.top .ttl{font-size:20px}
+.sheet-card>p{font-size:16px}
+
+/* Staff app */
+.staff-page .who .nm{font-size:19px}
+.staff-page .who .em{font-size:15px}
+.staff-page .tabbar button{font-size:15px;font-weight:750;line-height:1.35}
+.staff-page .tabbar button span{font-size:22px}
+.staff-page .bcell .k{font-size:15px}
+.staff-page .bcell .v small{font-size:14.5px}
+.staff-page .carry{font-size:15px}
+.staff-page .msec{font-size:14px}
+.staff-page .big .t{font-size:19px}
+.staff-page .quick button,.staff-page .chip{font-size:16.5px}
+.staff-page .sw{font-size:17px}
+.staff-page .calc .lab{font-size:15.5px}
+.staff-page .calc .big2 small{font-size:14.5px}
+.staff-page .calc .after{font-size:16px}
+.staff-page .calhd span{font-size:17px}
+.staff-page #cHead div{font-size:14px}
+.staff-page .cd{font-size:15.5px}
+.staff-page .clegend{font-size:14.5px}
+.staff-page .segs button{font-size:16px;min-height:46px}
+.staff-page .tabbar button .nb{font-size:13.5px;min-width:20px;height:20px;border-radius:10px;line-height:20px}
+.staff-page .rtype{font-size:18px}
+.staff-page .rw,.staff-page .trail{font-size:15px}
+.staff-page .noti .t{font-size:18px}
+.staff-page .noti .b{font-size:16px}
+.staff-page .noti .w{font-size:14px}
+.staff-page .office-row .office-name{font-size:18px}
+.staff-page .office-row .office-time{font-size:15.5px}
+.staff-page .editbox label{font-size:15px}
+.staff-page .pxr .who{font-size:19px}
+.staff-page .pxr .dt{font-size:15.5px}
+.staff-page .kv{font-size:16px}
+
+/* Admin app */
+.admin-page .drawer h3{font-size:14.5px}
+.admin-page .drawer button{font-size:18px;font-weight:700;min-height:50px}
+.admin-page .inm{font-size:19px}
+.admin-page .ity{font-size:17px}
+.admin-page .im,.admin-page .inn{font-size:15.5px}
+.admin-page .bonus{font-size:15.5px}
+.admin-page .sw2{font-size:17px}
+.admin-page .ahd b{font-size:19px}
+.admin-page .ahd .em{font-size:14.5px}
+.admin-page .bx .k{font-size:14.5px}
+.admin-page .bx .ed{font-size:14px}
+.admin-page .law{font-size:15.5px}
+.admin-page .cal .d{font-size:16.5px}
+.admin-page .cal .lb2{font-size:16px}
+.admin-page .cal .tp{font-size:14px}
+.admin-page .swipehint,.admin-page .secline{font-size:14.5px}
+.admin-page .today .nm2{font-size:18.5px}
+.admin-page .today .ty2{font-size:16.5px}
+.admin-page .today .tm{font-size:15.5px}
+.admin-page .today.none{font-size:16.5px}
+.admin-page .waitmsg{font-size:15.5px}
+.admin-page .mt .k,.admin-page .pgrid .px .k{font-size:14.5px}
+.admin-page .mt .v small{font-size:14.5px}
+.admin-page .mnone{font-size:16px}
+.admin-page .payhd .rate{font-size:15px}
+.admin-page .paydet,.admin-page .stl .r,.admin-page .trail{font-size:15.5px}
+.admin-page .cred-copy b{font-size:17px}
+.admin-page .cred-copy span{font-size:14.5px}
+.admin-page .cred-chip{font-size:14px}
+.admin-page .cred-block-title h3{font-size:19px}
+.admin-page .cred-role{font-size:15px}
+.admin-page .cred-desc,.admin-page .cred-alert{font-size:16px}
+
+/* Board and finance view */
+.stats-page .tin .ttl{font-size:20px}
+.stats-page .lock{font-size:15.5px}
+.stats-page .nav button{font-size:17px;font-weight:780;min-height:48px}
+.stats-page .hcell .k{font-size:15.5px}
+.stats-page .hcell .v small{font-size:15px}
+.stats-page .hcell .s{font-size:15px}
+.stats-page .chd .note{font-size:15px}
+.stats-page .chd select{font-size:16.5px}
+.stats-page .mgrid .wd{font-size:14px}
+.stats-page .day .n{font-size:15.5px}
+.stats-page .more{font-size:14px}
+.stats-page .pill{font-size:14px}
+.stats-page .appl .who{font-size:19px}
+.stats-page .appl .rng{font-size:16px}
+.stats-page .appl .rsn,.stats-page .appl .tl{font-size:15.5px}
+.stats-page table{font-size:16px}
+.stats-page th{font-size:14.5px}
+.stats-page .legend{font-size:15px}
+.stats-page .barw .bv,.stats-page .blabels div{font-size:14px}
+.stats-page .mt .k{font-size:14.5px}
+.stats-page .mt .v small{font-size:14.5px}
+.stats-page .mnone{font-size:16px}
+.stats-page .rtop .nm{font-size:19px}
+.stats-page .rtop .ty{font-size:16.5px}
+.stats-page .rtop .hr{font-size:17.5px}
+.stats-page .rmeta{font-size:15.5px}
+.stats-page .rtrail{font-size:15px}
+.stats-page .egrid label{font-size:15px}
+.stats-page .activity .at b{font-size:18px}
+.stats-page .activity .when{font-size:14px}
+.stats-page .activity .body{font-size:16px}
+.toast{font-size:16px;line-height:1.6}
+.load-state{font-size:15px}
+
+/* Liquid light feedback. The effect sits above the glass but never catches taps. */
+button,.btn,[role="button"]{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.ui-ripple-host{position:relative!important;overflow:hidden!important;isolation:isolate}
+.tap-ripple{
+  position:absolute;
+  z-index:20;
+  border-radius:50%;
+  pointer-events:none;
+  opacity:0;
+  transform:scale(.08);
+  background:radial-gradient(circle,rgba(255,255,255,.92) 0%,rgba(205,229,255,.52) 18%,rgba(119,170,255,.22) 44%,transparent 70%);
+  filter:blur(.25px);
+  mix-blend-mode:screen;
+  animation:tapRipple .58s cubic-bezier(.16,.72,.2,1) forwards;
+}
+.ui-tap-glow{animation:tapGlow .58s ease-out}
+@keyframes tapRipple{
+  0%{opacity:0;transform:scale(.08)}
+  16%{opacity:.88}
+  70%{opacity:.34}
+  100%{opacity:0;transform:scale(1)}
+}
+@keyframes tapGlow{
+  0%{filter:brightness(1)}
+  32%{filter:brightness(1.18);box-shadow:0 0 0 1px rgba(226,240,255,.42),0 0 30px rgba(113,166,255,.3)}
+  100%{filter:brightness(1)}
+}
+
+/* Newly shown pages rise gently from the glass surface. */
+#app:not(.hide){animation:appReveal .42s cubic-bezier(.18,.82,.24,1)}
+#app section[id^="p"]:not(.hide),#app div[id^="p"]:not(.hide),#app section[id^="f"]:not(.hide){
+  animation:viewReveal .34s cubic-bezier(.18,.78,.24,1);
+}
+@keyframes appReveal{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
+@keyframes viewReveal{from{opacity:0;transform:translateY(12px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
+
+@media(max-width:700px){
+  body{font-size:18px}
+  .chd h2{font-size:19px}
+  .stats-page .tin .ttl{font-size:19px}
+  .stats-page .lock{font-size:15px}
+  .stats-page .nav button{font-size:16.5px}
+  .staff-page .tabbar button{font-size:15px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  #app:not(.hide),#app section[id^="p"]:not(.hide),#app div[id^="p"]:not(.hide),#app section[id^="f"]:not(.hide),
+  .ui-tap-glow,.tap-ripple{animation:none!important}
+  .tap-ripple{display:none!important}
+}

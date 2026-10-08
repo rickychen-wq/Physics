@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '7.1.0';
+var SHARED_VERSION = '7.2.0';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -2129,6 +2129,53 @@ function toast(msg, type) {
     t.classList.remove('is-in');
     setTimeout(function () { t.remove(); }, 300);
   }, 3000);
+}
+
+/* ---------- 共用互動回饋 ----------
+   手機按下按鈕時顯示短暫的柔光漣漪；只處理視覺，不攔截原有事件。
+   使用者開啟「減少動態效果」時完全停用。 */
+function initPremiumInteractions() {
+  if (typeof document === 'undefined' || !document.addEventListener || document.documentElement.dataset.tpsMotion === 'on') return;
+  document.documentElement.dataset.tpsMotion = 'on';
+
+  function reducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+  function interactiveTarget(node) {
+    if (!node || !node.closest) return null;
+    return node.closest('button:not([disabled]),[role="button"]:not([aria-disabled="true"])');
+  }
+  function glow(target, x, y) {
+    if (!target || reducedMotion()) return;
+    var rect = target.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    var size = Math.max(rect.width, rect.height) * 1.9;
+    var ripple = document.createElement('span');
+    ripple.className = 'tap-ripple';
+    ripple.setAttribute('aria-hidden', 'true');
+    ripple.style.width = size + 'px';
+    ripple.style.height = size + 'px';
+    ripple.style.left = ((x == null ? rect.left + rect.width / 2 : x) - rect.left - size / 2) + 'px';
+    ripple.style.top = ((y == null ? rect.top + rect.height / 2 : y) - rect.top - size / 2) + 'px';
+    target.classList.add('ui-ripple-host', 'ui-tap-glow');
+    target.appendChild(ripple);
+    setTimeout(function () {
+      ripple.remove();
+      target.classList.remove('ui-ripple-host', 'ui-tap-glow');
+    }, 620);
+  }
+
+  document.addEventListener('pointerdown', function (e) {
+    glow(interactiveTarget(e.target), e.clientX, e.clientY);
+  }, { passive:true });
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) glow(interactiveTarget(e.target));
+  });
+}
+
+if (typeof document !== 'undefined' && document.addEventListener) {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPremiumInteractions);
+  else initPremiumInteractions();
 }
 
 console.info('[TPS] shared.js v' + SHARED_VERSION + ' loaded');

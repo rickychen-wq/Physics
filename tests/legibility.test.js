@@ -7,14 +7,16 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const css = read('premium.css');
 
 for (const page of ['index.html', 'admin.html', 'stats.html']) {
-  assert.match(read(page), /premium\.css\?v=4/, `${page} must load the legibility theme`);
+  assert.match(read(page), /premium\.css\?v=5/, `${page} must load the legibility theme`);
 }
 
-assert.match(css, /v4 high-legibility typography/);
-assert.match(css, /body\{[\s\S]*?font-size:16px;[\s\S]*?font-weight:500;/);
-assert.match(css, /input,select,textarea\{font-size:17px;font-weight:600/);
-assert.match(css, /\.btn\{font-size:16px;font-weight:780/);
-assert.match(css, /\.chd h2\{font-size:17px;font-weight:800/);
+assert.match(css, /v5 senior-friendly type and motion/);
+assert.match(css, /body\{[\s\S]*?font-size:18px;[\s\S]*?font-weight:520;/);
+assert.match(css, /input,select,textarea\{font-size:18px;font-weight:650/);
+assert.match(css, /\.btn\{font-size:18px;font-weight:800/);
+assert.match(css, /\.chd h2\{font-size:19px;font-weight:820/);
+assert.match(css, /@keyframes tapRipple/);
+assert.match(css, /prefers-reduced-motion:reduce/);
 
 function rgb(hex) {
   const value = hex.replace('#', '');
