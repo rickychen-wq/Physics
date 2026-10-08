@@ -507,7 +507,7 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
           <div class="cred-map-row">
             <span class="cred-no">3</span>
             <div class="cred-copy"><b>完整資料第二層</b><span>受信任記帳人員 · 假別、時數與 Excel</span></div>
-            <span class="cred-chip fixed">維護者設定</span>
+            <span class="cred-chip">可在下方修改</span>
           </div>
         </div>
       </div>
@@ -543,12 +543,22 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
         <div class="hint" id="pwMeta" style="margin-top:12px"></div>
       </div>
 
-      <div class="cred-block cred-static">
+      <div class="cred-block">
         <div class="cred-block-head">
           <span class="cred-no">3</span>
           <div class="cred-block-title"><h3>完整資料第二層密碼</h3><div class="cred-role">使用者：受信任的記帳人員</div></div>
         </div>
-        <div class="cred-desc">在檢視系統內解鎖假別、詳細時數、每月統計與 Excel 匯出。這一層目前不在後台直接修改，避免和一般檢視密碼混淆；需要更換時請交由系統維護者處理。</div>
+        <div class="cred-desc">在檢視系統內解鎖假別、詳細時數、每月統計與 Excel 匯出；不會影響第一層登入或手機通知。</div>
+        <div class="cred-alert"><b>修改後的影響：</b>已解鎖的裝置在重新開啟或回到頁面時，需要輸入新的第二層密碼。</div>
+        <div id="lv2AdminErr" class="err hide"></div>
+        <div class="field"><label class="lb">目前的第二層密碼</label>
+          <input type="text" id="curStatsLv2Pw" readonly></div>
+        <div class="field"><label class="lb">新的第二層密碼</label>
+          <input type="password" id="newStatsLv2Pw" autocomplete="new-password" minlength="8" placeholder="至少 8 個字元"></div>
+        <div class="field"><label class="lb">再輸入一次新密碼</label>
+          <input type="password" id="newStatsLv2Pw2" autocomplete="new-password" minlength="8" placeholder="再輸入一次"></div>
+        <button class="btn" id="saveLv2Pw">更改第二層密碼</button>
+        <div class="hint" id="lv2PwMeta" style="margin-top:12px"></div>
       </div>
     </section>
   </div>
@@ -577,7 +587,7 @@ var T_KEY = 'tps-admin-8f3a2c91e7';
 window.TPS.setAdminKey(T_KEY);
 
 var T = window.TPS, el = T.el, esc = T.esc, toast = T.toast, roundHalf = T.roundHalf;
-T.loadAdminPassword();   // 先把資料庫裡的後台密碼載進來
+T.loadAdminPassword().catch(function(e){ console.warn('[admin] 後台密碼載入失敗',e); });
 T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'error'); });
 
 var S = { page:'Rev', unsub:[], busy:false, nL:0, nO:0, nC:0,
@@ -595,6 +605,9 @@ el('#gBtn').onclick = function(){
     b.disabled = false; b.textContent = '進入';
     if(!T.adminLogin(el('#gPw').value)) return showErr('gErr','密碼不正確。');
     enterAdmin();
+  }).catch(function(){
+    b.disabled = false; b.textContent = '進入';
+    showErr('gErr','無法連線確認密碼，請檢查網路後再試一次。');
   });
 };
 function enterAdmin(){
@@ -841,11 +854,14 @@ function loadSys(){
     el('#curStatsPw').value = c.pw;
     el('#pwMeta').textContent = '目前版本 ' + c.epoch +
       '（每改一次密碼版本 +1，所有裝置的通知會一起關閉）';
+    el('#curStatsLv2Pw').value = c.lv2Pw;
+    el('#lv2PwMeta').textContent = '目前版本 ' + c.lv2Epoch +
+      '（每改一次版本 +1，舊的完整資料解鎖狀態會失效）';
   });
 }
 el('#savePw').onclick = function(){
   var p = el('#newStatsPw').value.trim();
-  if(p.length < 8) return toast('密碼至少 8 個字元','error');
+  if(p.length < 7) return toast('密碼至少 7 個字元','error');
   if(!confirm('把檢視系統第一層密碼改成「' + p + '」？\n\n' +
      '所有裝置的通知都會被關閉，每個人要重新輸入新密碼才會再收到。')) return;
   var b = el('#savePw'); b.disabled = true; b.textContent = '更新中…';
@@ -854,6 +870,21 @@ el('#savePw').onclick = function(){
     el('#newStatsPw').value = ''; loadSys();
   }).catch(function(e){ toast(e.message,'error'); })
     .then(function(){ b.disabled = false; b.textContent = '更改第一層密碼並關閉所有通知'; });
+};
+el('#saveLv2Pw').onclick = function(){
+  showErr('lv2AdminErr','');
+  var p = el('#newStatsLv2Pw').value.trim();
+  var p2 = el('#newStatsLv2Pw2').value;
+  if(p.length < 8) return showErr('lv2AdminErr','密碼至少 8 個字元');
+  if(p !== p2) return showErr('lv2AdminErr','兩次輸入的新密碼不一樣');
+  if(!confirm('把完整資料第二層密碼改成「' + p + '」？\n\n' +
+     '這不會影響第一層登入或手機通知；舊的完整資料解鎖狀態會失效。')) return;
+  var b = el('#saveLv2Pw'); b.disabled = true; b.textContent = '更新中…';
+  T.setStatsLv2Password(p, p2).then(function(){
+    toast('第二層密碼已更新','success');
+    el('#newStatsLv2Pw').value = ''; el('#newStatsLv2Pw2').value = ''; loadSys();
+  }).catch(function(e){ showErr('lv2AdminErr',e.message); })
+    .then(function(){ b.disabled = false; b.textContent = '更改第二層密碼'; });
 };
 
 /* ---------- 到期結算 ---------- */
@@ -1155,7 +1186,7 @@ function renderAccounts(){
         (a.term > 1 ? '<span class="termtag">第 ' + a.term + ' 任</span>' : '') +
         '<span class="st ' + (a.active === false ? 'off' : 'on') + '">' +
           (a.active === false ? '已停用' : '在職') + '</span>' +
-        '<span class="em">' + esc(a.email) + '</span></div>' +
+        '<span class="em">' + (a.jobTitle ? esc(a.jobTitle) + ' · ' : '') + esc(a.email) + '</span></div>' +
       '<div class="grid4">' +
         boxHtml(a.email, 'annualCarry',   '特休 · 去年遞延', b.annualCarry   || 0, true) +
         boxHtml(a.email, 'annualCurrent', '特休 · 今年',     b.annualCurrent || 0, true) +
@@ -1194,6 +1225,8 @@ function lawHtml(a){
   var h = '<div class="law">到職 ' + T.fmtDate(a.hireDate) + '　年資 <b>' + sn.years +
     '</b> 年 <b>' + sn.months + '</b> 個月<br>法定特休 <b>' + dy + '</b> 日（<b>' +
     (dy * T.HOURS_PER_DAY) + '</b> 小時）';
+  if(a.plannedResignDate)
+    h += '<br><span style="color:var(--warn)">預計離職 ' + T.fmtDate(a.plannedResignDate) + '</span>';
   var up = T.nextUpgrade(a.hireDate, at);
   if(up && !a.resignDate)
     h += '<br>下次調升 ' + T.fmtDate(up.date) + ' → ' + up.days + ' 日（' + up.hours + ' 小時）';
@@ -1359,7 +1392,7 @@ function loadLog(){
     el('#logCnt').textContent = list.length + ' 筆';
     var box = el('#logList');
     if(!list.length){ box.innerHTML = '<div class="empty">這個範圍沒有紀錄。</div>'; return; }
-    box.innerHTML = '<div class="swipehint">一般紀錄向左滑可以刪除；舊表月統計為避免餘額失真，不提供刪除。</div>';
+    box.innerHTML = '<div class="swipehint">一般紀錄向左滑可以刪除；原表匯入紀錄為避免餘額失真，不提供刪除。</div>';
     list.forEach(function(r){ box.appendChild(swipeRow(r)); });
   }).catch(function(e){
     el('#logList').innerHTML = '<div class="empty">載入失敗：' + esc(e.message) + '</div>';
@@ -1372,7 +1405,7 @@ function swipeRow(r){
   var del = document.createElement('button'); del.className = 'del'; del.textContent = '刪除';
   var body = document.createElement('div'); body.className = 'body';
   body.innerHTML = logCard(r);
-  if(r.source === 'legacy-import'){
+  if(/^legacy-/.test(r.source || '')){
     wrap.appendChild(body);
     return wrap;
   }
@@ -1414,11 +1447,13 @@ function swipeRow(r){
 
 function logCard(r){
   var isLeave = r.kind === 'leave';
-  var isLegacy = r.source === 'legacy-import' && r.summaryYm;
+  var isLegacyMonthly = r.source === 'legacy-import' && r.summaryYm;
+  var isLegacyDetail = r.source === 'legacy-detail-import';
+  var isLegacy = isLegacyMonthly || isLegacyDetail;
   var label = isLeave
     ? ((r.type==='other' && r.otherType) ? r.otherType : T.leaveTypeLabel(r.type))
-    : (isLegacy ? '加班（月統計）' : '加班');
-  var when = isLegacy
+    : (isLegacyMonthly ? '加班（月統計）' : '加班');
+  var when = isLegacyMonthly
     ? r.summaryYm.replace('-', ' 年 ') + ' 月彙總（原試算表缺少逐筆日期、時段與原因）'
     : isLeave
     ? T.fmtDateTime(r.startAt) + ' → ' + T.fmtDateTime(r.endAt)
@@ -1434,8 +1469,9 @@ function logCard(r){
   if(!isLeave && r.bonusHours > 0) h += '<div class="inn">核派增額 +' + r.bonusHours + ' 小時</div>';
   if(r.reason) h += '<div class="inn">事由：' + esc(r.reason) + '</div>';
   h += isLegacy
-    ? '<div class="trail">舊資料匯入　<b>' + T.fmtStamp(r.importedAt || r.createdAt) + '</b>' +
-      '<br>' + esc(r.sourceNote || '原試算表僅提供月統計，沒有逐筆明細。')
+    ? '<div class="trail">原表資料匯入　<b>' + T.fmtStamp(r.importedAt || r.createdAt) + '</b>' +
+      (isLegacyDetail ? '<br>原表送出　<b>' + T.fmtStamp(r.createdAt) + '</b>' : '') +
+      '<br>' + esc(r.sourceNote || '原 Google 表單逐筆資料匯入。')
     : '<div class="trail">送出　<b>' + T.fmtStamp(r.createdAt) + '</b>　' + esc(r.name);
   if(!isLegacy && (r.status === 'approved' || r.status === 'rejected'))
     h += '<br>' + (r.status === 'approved' ? '同意' : '駁回') + '　<b>' +

@@ -995,11 +995,13 @@ function renderRecs(){
 function recCard(r){
   var d = document.createElement('div'); d.className = 'rec';
   var isLeave = r.kind === 'leave';
-  var isLegacy = r.source === 'legacy-import' && r.summaryYm;
+  var isLegacyMonthly = r.source === 'legacy-import' && r.summaryYm;
+  var isLegacyDetail = r.source === 'legacy-detail-import';
+  var isLegacy = isLegacyMonthly || isLegacyDetail;
   var label = isLeave
     ? ((r.type === 'other' && r.otherType) ? r.otherType : T.leaveTypeLabel(r.type))
-    : (isLegacy ? '加班（月統計）' : '加班');
-  var when = isLegacy
+    : (isLegacyMonthly ? '加班（月統計）' : '加班');
+  var when = isLegacyMonthly
     ? r.summaryYm.replace('-', ' 年 ') + ' 月彙總（原試算表缺少逐筆日期、時段與原因）'
     : isLeave
     ? T.fmtDateTime(r.startAt) + ' → ' + T.fmtDateTime(r.endAt)
@@ -1013,7 +1015,7 @@ function recCard(r){
   if(isLeave && r.segments && r.segments.length > 1)
     h += '<div class="rw">跨月：' + r.segments.map(function(s){
       return s.ym + ' ' + s.hours + 'h'; }).join('、') + '</div>';
-  if(!isLeave && isLegacy && (r.bonusHours || 0) > 0)
+  if(!isLeave && isLegacyMonthly && (r.bonusHours || 0) > 0)
     h += '<div class="rw">本月核派增額 +' + roundHalf(r.bonusHours) +
          ' 小時，補休合計 ' + roundHalf(r.hours + r.bonusHours) + ' 小時</div>';
   else if(!isLeave && r.isDispatch)
@@ -1021,8 +1023,9 @@ function recCard(r){
          roundHalf(r.hours + (r.bonusHours || 0)) + ' 小時</div>';
 
   var trail = isLegacy
-    ? '<div class="trail">舊資料匯入　<b>' + T.fmtStamp(r.importedAt || r.createdAt) + '</b>' +
-      '<br>' + esc(r.sourceNote || '原試算表僅提供月統計，沒有逐筆明細。')
+    ? '<div class="trail">原表資料匯入　<b>' + T.fmtStamp(r.importedAt || r.createdAt) + '</b>' +
+      (isLegacyDetail ? '<br>原表送出　<b>' + T.fmtStamp(r.createdAt) + '</b>' : '') +
+      '<br>' + esc(r.sourceNote || '原 Google 表單逐筆資料匯入。')
     : '<div class="trail">送出　<b>' + T.fmtStamp(r.createdAt) + '</b>';
   if(!isLegacy && (r.status === 'approved' || r.status === 'rejected'))
     trail += '<br>' + (r.status === 'approved' ? '同意' : '駁回') + '　<b>' +

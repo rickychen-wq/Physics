@@ -80,6 +80,8 @@ var WORK_WINDOWS   = [[9, 12], [13, 17]];
 var DEFAULT_PW     = '123456';
 var ADMIN_PASSWORD = '0423';
 var STATS_DEFAULT_PW = 'physics';   // stats 第一層預設密碼，之後可在後台改
+var STATS_LV2_DEFAULT_PW = '04191972'; // 舊版第二層預設值；正式值以 config/stats 為準
+var STATS_PASSWORD_MIN_LENGTH = 7;  // 第一層既有需求 tps2363 為 7 個字元
 var MIN_PASSWORD_LENGTH = 8;       // 新設定的密碼至少 8 個字元；既有密碼仍可登入後再更新
 
 /* 後台密鑰。
@@ -482,10 +484,11 @@ function changePassword(oldPw, newPw, confirmPw) {
    loadAdminPassword() 要在頁面載入時先呼叫一次。 */
 var _adminPw = ADMIN_PASSWORD;
 function loadAdminPassword() {
-  return getConfig('admin').then(function (c) {
-    if (c && c.pw) _adminPw = c.pw;
+  return db.collection(COL.config).doc('admin').get().then(function (s) {
+    var c = s.exists ? s.data() : null;
+    _adminPw = (c && c.pw) || ADMIN_PASSWORD;
     return _adminPw;
-  }).catch(function () { return _adminPw; });
+  });
 }
 function currentAdminPassword() { return _adminPw; }
 
@@ -2035,10 +2038,16 @@ function getConfig(key) {
     return s.exists ? s.data() : null;
   }).catch(function () { return null; });
 }
-/** stats 第一層密碼，沒設定過就用預設的 physics */
+/** stats 兩層密碼與各自版本；舊資料沒有第二層欄位時保留舊版預設值。 */
 function getStatsPassword() {
-  return getConfig('stats').then(function (c) {
-    return { pw: (c && c.pw) || STATS_DEFAULT_PW, epoch: (c && c.epoch) || 0 };
+  return db.collection(COL.config).doc('stats').get().then(function (s) {
+    var c = s.exists ? s.data() : null;
+    return {
+      pw: (c && c.pw) || STATS_DEFAULT_PW,
+      epoch: (c && c.epoch) || 0,
+      lv2Pw: (c && c.lv2Pw) || STATS_LV2_DEFAULT_PW,
+      lv2Epoch: (c && c.lv2Epoch) || 0
+    };
   });
 }
 /**
@@ -2048,7 +2057,7 @@ function getStatsPassword() {
 function setStatsPassword(newPw) {
   if (!isAdmin()) return Promise.reject(new Error('只有秘書長可以修改'));
   var p = String(newPw || '').trim();
-  if (p.length < MIN_PASSWORD_LENGTH) return Promise.reject(new Error('密碼至少 8 個字元'));
+  if (p.length < STATS_PASSWORD_MIN_LENGTH) return Promise.reject(new Error('密碼至少 7 個字元'));
   return getStatsPassword().then(function (c) {
     return setMerge(COL.config, 'stats', {
       pw: p, epoch: (c.epoch || 0) + 1, changedAt: serverTimestamp()
@@ -2067,6 +2076,24 @@ function setStatsPassword(newPw) {
     }).then(function (removed) {
       return { epoch: (c.epoch || 0) + 1, removedSubs: removed };
     });
+  });
+}
+
+/** 改完整資料第二層密碼；版本 +1 讓既有第二層工作階段在下次檢查時失效。 */
+function setStatsLv2Password(newPw, confirmPw) {
+  if (!isAdmin()) return Promise.reject(new Error('只有秘書長可以修改'));
+  var p = String(newPw || '').trim();
+  if (p.length < MIN_PASSWORD_LENGTH) return Promise.reject(new Error('密碼至少 8 個字元'));
+  if (p !== String(confirmPw || '')) return Promise.reject(new Error('兩次輸入的新密碼不一樣'));
+  return getStatsPassword().then(function (c) {
+    if (p === c.lv2Pw) throw new Error('新密碼不能跟目前密碼一樣');
+    var next = (c.lv2Epoch || 0) + 1;
+    return setMerge(COL.config, 'stats', {
+      lv2Pw: p, lv2Epoch: next, lv2ChangedAt: serverTimestamp()
+    }).then(function () {
+      return writeAudit('config.statsLv2Pw', 'stats', { lv2Epoch:c.lv2Epoch || 0 },
+        { lv2Epoch:next });
+    }).then(function () { return { lv2Epoch:next }; });
   });
 }
 
@@ -2110,6 +2137,7 @@ return {
   SHARED_VERSION: SHARED_VERSION, db: db, serverTimestamp: serverTimestamp, Timestamp: TS,
   HOURS_PER_DAY: HOURS_PER_DAY, MONTHLY_OT_CAP: MONTHLY_OT_CAP,
   DEFAULT_PW: DEFAULT_PW, ADMIN_PASSWORD: ADMIN_PASSWORD, STATS_DEFAULT_PW: STATS_DEFAULT_PW,
+  STATS_LV2_DEFAULT_PW: STATS_LV2_DEFAULT_PW,
   LEAVE_TYPES: LEAVE_TYPES, STATUS: STATUS, STATUS_LABEL: STATUS_LABEL, COL: COL,
   leaveTypeLabel: leaveTypeLabel, leaveTypeDef: leaveTypeDef,
   toDate: toDate, ym: ym, fmtDate: fmtDate, fmtTime: fmtTime,
@@ -2158,6 +2186,7 @@ return {
   computeMonthSalary: computeMonthSalary, computeAllSalary: computeAllSalary,
   workdaysOfMonth: workdaysOfMonth,
   getConfig: getConfig, getStatsPassword: getStatsPassword, setStatsPassword: setStatsPassword,
+  setStatsLv2Password: setStatsLv2Password,
   monthLeaveHours: monthLeaveHours, monthOvertimeHours: monthOvertimeHours,
   writeAudit: writeAudit, setErrorHandler: setErrorHandler,
   _sha256: sha256, _hashPw: hashPw, setAdminKey: setAdminKey,

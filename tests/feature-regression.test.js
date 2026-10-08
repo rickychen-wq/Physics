@@ -31,6 +31,8 @@ assert.match(admin, /id="credentialCenter"/);
 assert.match(admin, /管理員後台密碼/);
 assert.match(admin, /檢視系統第一層密碼/);
 assert.match(admin, /完整資料第二層密碼/);
+assert.match(admin, /id="saveLv2Pw"/);
+assert.match(admin, /T\.setStatsLv2Password/);
 
 for (const api of ['createAccount', 'setAccountActive', 'importCalendarDays', 'watchOfficeLeaves', 'watchScopeNotices']) {
   assert.match(shared, new RegExp(`${api}\\s*:`), `${api} must be exported`);
@@ -45,7 +47,13 @@ assert.match(stats, /加班休假檢視系統/);
 assert.match(stats, /id="todayBoard"/);
 assert.match(stats, /id="upcomingBoard"/);
 assert.match(stats, /id="statsNotiList"/);
-assert.match(stats, /var LV2_PW/);
+assert.doesNotMatch(stats, /var LV2_PW/);
+assert.match(stats, /c\.lv2Pw/);
+assert.match(stats, /String\(S\.statsLv2Epoch\)/);
+assert.match(shared, /function setStatsLv2Password/);
+assert.match(shared, /setStatsLv2Password:\s*setStatsLv2Password/);
+assert.match(shared, /db\.collection\(COL\.config\)\.doc\('admin'\)\.get\(\)/);
+assert.match(shared, /db\.collection\(COL\.config\)\.doc\('stats'\)\.get\(\)/);
 assert.match(stats, /id="lockBtn"/);
 assert.match(stats, /id="lv2Sheet"/);
 assert.doesNotMatch(stats, /tps-admin-[a-z0-9]+/i, 'stats must not contain the admin key');

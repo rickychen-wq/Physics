@@ -333,7 +333,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
     <h2 id="lv2Title">解鎖完整資料</h2>
     <p>僅提供受信任的記帳人員使用。解鎖後可查看假別、時數、每月統計與匯出 Excel。</p>
     <label class="lb" for="lv2Pw">第二層密碼</label>
-    <input type="password" id="lv2Pw" autocomplete="current-password" inputmode="numeric" placeholder="輸入第二層密碼">
+    <input type="password" id="lv2Pw" autocomplete="current-password" placeholder="輸入第二層密碼">
     <div id="lv2Err" class="err hide" role="alert"></div>
     <div class="sheet-actions">
       <button class="btn ghost" id="lv2Cancel" type="button">取消</button>
@@ -533,8 +533,8 @@ T.setErrorHandler(function(e){ toast('讀取失敗：' + (e.message || e), 'erro
 
 var LV2_KEY = 'tps.stats.lv2.session';
 /* 記帳層密碼與一般檢視密碼分開；此頁仍維持唯讀。 */
-var LV2_PW = '04191972';
-var S = { page:'Cal', lv2:false, picked:null, statsPw:'physics', statsEpoch:0, y:new Date().getFullYear(), m:new Date().getMonth(),
+var S = { page:'Cal', lv2:false, picked:null, statsPw:'physics', statsEpoch:0,
+          statsLv2Pw:'04191972', statsLv2Epoch:0, y:new Date().getFullYear(), m:new Date().getMonth(),
           accounts:[], leaves:[], ots:[], notices:[], unsub:[], loaded:false };
 
 function showErr(id,msg){ var b=el('#'+id);
@@ -547,8 +547,9 @@ el('#gBtn').onclick = function(){
   var b = el('#gBtn'); b.disabled = true; b.textContent = '確認中…';
   T.getStatsPassword().then(function(c){
     S.statsPw = c.pw; S.statsEpoch = c.epoch;
+    S.statsLv2Pw = c.lv2Pw; S.statsLv2Epoch = c.lv2Epoch;
     if(pw === c.pw){ enter(); return; }
-    if(pw === LV2_PW){ unlock(true); enter(); return; }
+    if(pw === c.lv2Pw){ unlock(true); enter(); return; }
     showErr('gErr','密碼不正確。');
   }).catch(function(){ showErr('gErr','連線失敗，請再試一次。'); })
     .then(function(){ b.disabled = false; b.textContent = '進入'; });
@@ -558,7 +559,7 @@ el('#gPw').addEventListener('keydown', function(e){ if(e.key==='Enter') el('#gBt
 function enter(){
   el('#gate').classList.add('hide');
   el('#app').classList.remove('hide');
-  try { if(sessionStorage.getItem(LV2_KEY) === '1') unlock(true); }
+  try { if(sessionStorage.getItem(LV2_KEY) === String(S.statsLv2Epoch)) unlock(true); }
   catch(e){ console.warn('[stats] 讀取記帳解鎖狀態失敗', e); }
   loadAll();
 }
@@ -573,7 +574,7 @@ function unlock(on){
   Array.prototype.forEach.call(document.querySelectorAll('.lv2'), function(b){
     b.classList.toggle('hide', !on);
   });
-  try { on ? sessionStorage.setItem(LV2_KEY,'1') : sessionStorage.removeItem(LV2_KEY); }
+  try { on ? sessionStorage.setItem(LV2_KEY,String(S.statsLv2Epoch)) : sessionStorage.removeItem(LV2_KEY); }
   catch(e){ console.warn('[stats] 寫入記帳解鎖狀態失敗', e); }
   if(!on && S.page !== 'Cal' && S.page !== 'Noti') go('Cal');
 }
@@ -589,15 +590,16 @@ function closeLv2Sheet(){
   el('#lockBtn').setAttribute('aria-expanded', S.lv2 ? 'true' : 'false');
 }
 function submitLv2(){
-  if(el('#lv2Pw').value !== LV2_PW){
-    showErr('lv2Err','第二層密碼不正確。');
-    el('#lv2Pw').select();
-    return;
-  }
-  unlock(true);
-  closeLv2Sheet();
-  toast('已解鎖完整資料','success');
-  renderAll();
+  var entered = el('#lv2Pw').value;
+  var b = el('#lv2Submit'); b.disabled = true; b.textContent = '確認中…';
+  T.getStatsPassword().then(function(c){
+    S.statsLv2Pw = c.lv2Pw; S.statsLv2Epoch = c.lv2Epoch;
+    if(entered !== c.lv2Pw){
+      showErr('lv2Err','第二層密碼不正確。'); el('#lv2Pw').select(); return;
+    }
+    unlock(true); closeLv2Sheet(); toast('已解鎖完整資料','success'); renderAll();
+  }).catch(function(){ showErr('lv2Err','連線失敗，請再試一次。'); })
+    .then(function(){ b.disabled = false; b.textContent = '解鎖'; });
 }
 el('#lockBtn').onclick = function(){
   if(S.lv2){
@@ -615,6 +617,15 @@ el('#lv2Pw').addEventListener('keydown', function(e){
 });
 el('#lv2Sheet').addEventListener('click', function(e){
   if(e.target === el('#lv2Sheet')) closeLv2Sheet();
+});
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState !== 'visible' || !S.lv2) return;
+  T.getStatsPassword().then(function(c){
+    if(c.lv2Epoch === S.statsLv2Epoch) return;
+    S.statsLv2Pw = c.lv2Pw; S.statsLv2Epoch = c.lv2Epoch;
+    unlock(false);
+    toast('第二層密碼已更新，請重新解鎖完整資料','error');
+  });
 });
 
 /* ---------- 分頁 ---------- */
@@ -642,7 +653,7 @@ Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function(
 function loadAll(){
   S.unsub.forEach(function(f){ f(); }); S.unsub = [];
   return Promise.all([T.listAccounts(), T.loadCalendar()]).then(function(r){
-    S.accounts = r[0]; S.loaded = true;
+    S.accounts = r[0].filter(function(a){ return a.active !== false; }); S.loaded = true;
     var opts = '<option value="">全部人員</option>' + S.accounts.map(function(a){
       return '<option value="' + esc(a.email) + '">' + esc(a.name || a.email) + '</option>'; }).join('');
     el('#fWho').innerHTML = opts;
@@ -1064,12 +1075,14 @@ function renderDetail(){
 function detCard(x){
   var d = document.createElement('div'); d.className = 'rec';
   var isLeave = x.kind === 'leave';
-  var isLegacy = x.source === 'legacy-import' && x.summaryYm;
+  var isLegacyMonthly = x.source === 'legacy-import' && x.summaryYm;
+  var isLegacyDetail = x.source === 'legacy-detail-import';
+  var isLegacy = isLegacyMonthly || isLegacyDetail;
   var label = isLeave
     ? ((x.type==='other' && x.otherType) ? x.otherType : T.leaveTypeLabel(x.type))
-    : (isLegacy ? (x.bonusHours > 0 ? '加班（月統計，含核派增額）' : '加班（月統計）')
+    : (isLegacyMonthly ? (x.bonusHours > 0 ? '加班（月統計，含核派增額）' : '加班（月統計）')
                 : (x.isDispatch ? '加班（核派）' : '加班'));
-  var when = isLegacy
+  var when = isLegacyMonthly
     ? x.summaryYm.replace('-', ' 年 ') + ' 月彙總（原試算表缺少逐筆日期、時段與原因）'
     : isLeave
     ? T.fmtDateTime(x.startAt) + ' → ' + T.fmtDateTime(x.endAt)
@@ -1091,8 +1104,9 @@ function detCard(x){
   if(isLeave && x.isLate) h += '<div class="rmeta">事後補請：' + esc(x.lateReason || '未填') + '</div>';
 
   h += isLegacy
-    ? '<div class="rtrail">舊資料匯入　<b>' + T.fmtStamp(x.importedAt || x.createdAt) + '</b>' +
-      '<br>' + esc(x.sourceNote || '原試算表僅提供月統計，沒有逐筆明細。')
+    ? '<div class="rtrail">原表資料匯入　<b>' + T.fmtStamp(x.importedAt || x.createdAt) + '</b>' +
+      (isLegacyDetail ? '<br>原表送出　<b>' + T.fmtStamp(x.createdAt) + '</b>' : '') +
+      '<br>' + esc(x.sourceNote || '原 Google 表單逐筆資料匯入。')
     : '<div class="rtrail">送出　<b>' + T.fmtStamp(x.createdAt) + '</b>';
   if(!isLegacy && (x.status==='approved'||x.status==='rejected'))
     h += '<br>' + (x.status==='approved'?'同意':'駁回') + '　<b>' + T.fmtStamp(x.reviewedAt) +
@@ -1289,7 +1303,8 @@ el('#expBtn').onclick = function(){
         'account.changePw':'使用者改密碼', 'account.handover':'換人接手',
         'account.delete':'刪除帳號', 'staff.create':'新增人員', 'staff.delete':'刪除人員',
         'calendar.set':'設定行事曆', 'calendar.delete':'刪除行事曆',
-        'config.statsPw':'更換檢視密碼', 'config.adminPw':'更換後台密碼',
+        'config.statsPw':'更換檢視第一層密碼', 'config.statsLv2Pw':'更換完整資料第二層密碼',
+        'config.adminPw':'更換後台密碼',
         'settlement.paid':'標記已發放'
       };
       var KEYNAME = {
@@ -1393,49 +1408,55 @@ function sheet(rows, widths){
   return ws;
 }
 function leaveRow(x, mark){
-  var legacy = x.source === 'legacy-import' && x.summaryYm;
-  var note = legacy ? (x.sourceNote || '原試算表僅提供月統計，缺少逐筆日期、時段與原因。') : '';
+  var legacyMonthly = x.source === 'legacy-import' && x.summaryYm;
+  var legacyDetail = x.source === 'legacy-detail-import';
+  var legacy = legacyMonthly || legacyDetail;
+  var note = legacy ? (x.sourceNote || '原 Google 表單資料匯入。') : '';
   return {
     '姓名': x.name, '任期': x.term || 1,
     '假別': (x.type==='other' && x.otherType) ? x.otherType : T.leaveTypeLabel(x.type),
     '時數': x.hours,
-    '開始': legacy ? x.summaryYm + '（月統計）' : T.fmtStamp(x.startAt),
-    '結束': legacy ? '原表缺少逐筆日期／時段' : T.fmtStamp(x.endAt),
+    '開始': legacyMonthly ? x.summaryYm + '（月統計）' : T.fmtStamp(x.startAt),
+    '結束': legacyMonthly ? '原表缺少逐筆日期／時段' : T.fmtStamp(x.endAt),
     '扣特休': x.annualHours || 0, '扣補休': x.compHours || 0,
     '分月計入': (x.segments||[]).map(function(s){ return s.ym + ' ' + s.hours + 'h'; }).join('、'),
     '狀態': T.STATUS_LABEL[x.status] || x.status,
     '職務代理人': x.needsProxy ? (x.proxyName || '') +
       (x.proxyStatus==='accepted' ? '（已確認）' : x.proxyStatus==='declined' ? '（已駁回）' : '（待確認）') : '',
     '事後補請': x.isLate ? ('是：' + (x.lateReason||'')) : '否',
-    '送出時間': legacy ? '' : T.fmtStamp(x.createdAt),
+    '送出時間': legacyMonthly ? '' : T.fmtStamp(x.createdAt),
     '審核時間': legacy ? '' : (x.reviewedAt ? T.fmtStamp(x.reviewedAt) : ''),
     '審核人': x.reviewedBy || '', '註記': x.adminNote || '',
     '最後修改': x.editedAt ? T.fmtStamp(x.editedAt) : '',
     '修改人': x.editedBy || (x.editedByOwner ? '申請人自行修改' : ''),
-    '資料來源': legacy ? '原試算表月統計（不含逐筆明細）' : '線上系統',
+    '資料來源': legacyMonthly ? '原試算表月統計（不含逐筆明細）' :
+      (legacyDetail ? '原 Google 表單逐筆明細' : '線上系統'),
     '備註': [note, mark].filter(Boolean).join('；')
   };
 }
 function otRow(x, mark){
-  var legacy = x.source === 'legacy-import' && x.summaryYm;
-  var note = legacy ? (x.sourceNote || '原試算表僅提供月統計，缺少逐筆日期、時段與原因。') : '';
+  var legacyMonthly = x.source === 'legacy-import' && x.summaryYm;
+  var legacyDetail = x.source === 'legacy-detail-import';
+  var legacy = legacyMonthly || legacyDetail;
+  var note = legacy ? (x.sourceNote || '原 Google 表單資料匯入。') : '';
   return {
     '姓名': x.name, '任期': x.term || 1,
-    '日期': legacy ? x.summaryYm + '（月統計）' : T.fmtDate(x.date),
-    '起': legacy ? '原表缺少' : T.fmtTime(x.startAt),
-    '迄': legacy ? '原表缺少' : T.fmtTime(x.endAt),
+    '日期': legacyMonthly ? x.summaryYm + '（月統計）' : T.fmtDate(x.date),
+    '起': legacyMonthly ? '原表缺少' : T.fmtTime(x.startAt),
+    '迄': legacyMonthly ? '原表缺少' : T.fmtTime(x.endAt),
     '時數': x.hours, '核派加班': x.isDispatch ? '是' : '否',
     '增額': x.bonusHours || 0,
     '補休實得': roundHalf((x.hours||0) + (x.bonusHours||0)),
     '假日': x.isWeekend ? '是' : '否',
-    '事由': legacy ? '原表缺少逐筆事由' : (x.reason || ''),
+    '事由': legacyMonthly ? '原表缺少逐筆事由' : (x.reason || ''),
     '狀態': T.STATUS_LABEL[x.status] || x.status,
-    '送出時間': legacy ? '' : T.fmtStamp(x.createdAt),
+    '送出時間': legacyMonthly ? '' : T.fmtStamp(x.createdAt),
     '審核時間': legacy ? '' : (x.reviewedAt ? T.fmtStamp(x.reviewedAt) : ''),
     '審核人': x.reviewedBy || '', '註記': x.adminNote || '',
     '最後修改': x.editedAt ? T.fmtStamp(x.editedAt) : '',
     '修改人': x.editedBy || '',
-    '資料來源': legacy ? '原試算表月統計（不含逐筆明細）' : '線上系統',
+    '資料來源': legacyMonthly ? '原試算表月統計（不含逐筆明細）' :
+      (legacyDetail ? '原 Google 表單逐筆明細' : '線上系統'),
     '備註': [note, mark].filter(Boolean).join('；')
   };
 }
