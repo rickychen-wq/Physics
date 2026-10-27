@@ -58,7 +58,7 @@ async function context(device='desktop', width=390, blockStorage=false) {
     const url = route.request().url();
     if(url.includes('firebase-app-compat')) return route.fulfill({contentType:'text/javascript',body:fakeFirebase});
     if(url.includes('firebase-firestore-compat')) return route.fulfill({contentType:'text/javascript',body:''});
-    if(url === base + '/shared.js') return route.fulfill({contentType:'text/javascript',body:shared + '\n' + fixture});
+    if(new URL(url).pathname === '/shared.js') return route.fulfill({contentType:'text/javascript',body:shared + '\n' + fixture});
     if(!url.startsWith(base)) return route.abort();
     return route.continue();
   });
@@ -133,6 +133,10 @@ try {
     await page.evaluate(()=>{document.querySelector('#app').classList.remove('hide');});
     assert.equal(await page.locator('#tpsGuide').isVisible(),false);
     if(role==='staff'){
+      await page.evaluate(()=>{document.querySelector('#app').classList.add('hide');});
+      await page.evaluate(()=>{window.__person.guideEpoch=1;document.querySelector('#app').classList.remove('hide');});
+      await page.locator('#tpsGuide:not([hidden])').waitFor();
+      await page.keyboard.press('Escape');
       await page.evaluate(()=>{document.querySelector('#app').classList.add('hide');});
       await page.evaluate(()=>{window.__person.term=2;document.querySelector('#app').classList.remove('hide');});
       await page.locator('#tpsGuide:not([hidden])').waitFor();

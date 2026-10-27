@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '7.2.1';
+var SHARED_VERSION = '7.2.2';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -418,6 +418,7 @@ function buildMe(email, acc) {
     email: email, name: acc.name || '', role: 'staff',
     hireDate: acc.hireDate || null, resignDate: acc.resignDate || null,
     active: acc.active !== false, term: acc.term || 1,
+    guideEpoch: acc.guideEpoch || 0,
     isDefaultPw: acc.pwHash === hashPw(DEFAULT_PW)
   };
 }
