@@ -122,6 +122,7 @@ try {
     await page.getByRole('button',{name:'完成教學',exact:true}).click();
     assert.equal(await page.locator('#tpsGuide').isVisible(),false);
     assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('tps.guide.v1.') && localStorage.getItem(k)==='seen')),true);
+    if(role==='staff') assert.equal(await page.evaluate(()=>localStorage.getItem('tps.guide.v1.staff.guide@example.invalid.1')),'seen','Accounts not reset must keep their original completion key');
     // Replaying remains available after completion and keyboard focus stays in the modal.
     await page.locator('.tg-help-row button').click();
     await page.locator('.tg-close').focus();await page.keyboard.press('Shift+Tab');

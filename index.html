@@ -1208,7 +1208,7 @@ el('#pushBtn').onclick = function(){
 </script>
 <script src="guide.js?v=1"></script>
 <script>
-TPSGuide.init({role:'staff', identity:function(){ var u=T.currentUser(); return u ? u.email + '.' + (u.term || 1) + '.' + (u.guideEpoch || 0) : 'guest'; },
+TPSGuide.init({role:'staff', identity:function(){ var u=T.currentUser(); return u ? u.email + '.' + (u.term || 1) + (u.guideEpoch ? '.' + u.guideEpoch : '') : 'guest'; },
   navigate:function(p){ document.querySelector('.tabbar button[data-p="'+p+'"]').click(); }});
 </script>
 </body>
