@@ -7,7 +7,7 @@
 window.TPS = (function () {
 'use strict';
 
-var SHARED_VERSION = '7.2.0';
+var SHARED_VERSION = '7.2.1';
 
 /* ---------- 0. Firebase ---------- */
 var firebaseConfig = {
@@ -376,13 +376,27 @@ var _me = null;
 
 function hashPw(pw) { return sha256(SALT + '|' + String(pw)); }
 function normEmail(e) { return String(e || '').trim().toLowerCase(); }
+function personKey(x) { return normEmail(x.email) + '|' + (x.term || 1); }
+// Include former terms under their recorded names when producing historical reports.
+function reportPeople(accounts, records) {
+  var people = accounts.slice(), seen = {};
+  people.forEach(function(a){ seen[personKey(a)] = true; });
+  records.forEach(function(x){
+    var key = personKey(x);
+    if (!seen[key]) {
+      seen[key] = true;
+      people.push({ email:x.email, term:x.term || 1, name:x.name || x.email, active:false });
+    }
+  });
+  return people;
+}
 function currentUser() { return _me; }
 function isAdmin() { return !!_me && _me.role === 'admin'; }
 function canApply() { return !!_me && _me.role === 'staff' && _me.active !== false; }
 
 function saveSession(email, pwHash) {
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ email:normEmail(email), pwHash:String(pwHash || '') }));
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ email:normEmail(email), pwHash:String(pwHash || ''), term:_me ? _me.term : null }));
     localStorage.removeItem(LEGACY_SESSION_KEY);
   } catch (e) {}
 }
@@ -455,6 +469,7 @@ function restoreSession() {
     if (!snap.exists) throw new Error('帳號不存在');
     var acc = snap.data();
     if (acc.active === false || acc.pwHash !== saved.pwHash) throw new Error('登入已失效');
+    if (saved.term !== (acc.term || 1)) throw new Error('人員已交接，請重新登入');
     _me = buildMe(em, acc);
     afterLogin(em);
     return _me;
@@ -617,6 +632,7 @@ function handoverAccount(email, newName, hireDate) {
       term: newTerm,
       hireDate: hireDate ? TS.fromDate(toDate(hireDate)) : null,
       resignDate: null,
+      plannedResignDate: null,
       active: true,
       pwHash: hashPw(DEFAULT_PW),
       lastGrantAnniv: null,
@@ -2237,6 +2253,7 @@ return {
   monthLeaveHours: monthLeaveHours, monthOvertimeHours: monthOvertimeHours,
   writeAudit: writeAudit, setErrorHandler: setErrorHandler,
   _sha256: sha256, _hashPw: hashPw, setAdminKey: setAdminKey,
-  el: el, esc: esc, toast: toast
+  el: el, esc: esc, toast: toast,
+  personKey: personKey, reportPeople: reportPeople
 };
 })();

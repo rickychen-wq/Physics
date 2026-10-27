@@ -894,13 +894,13 @@ function renderSummary(){
   var months = [];
   for(var i=1;i<=12;i++) months.push(y + '-' + pad2(i));
 
-  var people = S.accounts.slice();
+  var people = T.reportPeople(S.accounts, S.leaves.concat(S.ots));
   var lvMap = {}, otMap = {};
-  people.forEach(function(a){ lvMap[a.email] = {}; otMap[a.email] = {}; });
+  people.forEach(function(a){ lvMap[T.personKey(a)] = {}; otMap[T.personKey(a)] = {}; });
 
   S.leaves.forEach(function(x){
     if(x.status !== 'approved') return;
-    var m = lvMap[x.email]; if(!m) return;
+    var m = lvMap[T.personKey(x)]; if(!m) return;
     var segs = (x.segments && x.segments.length) ? x.segments
              : [{ ym: T.ym(x.startAt), hours: x.hours }];
     segs.forEach(function(sg){
@@ -910,7 +910,7 @@ function renderSummary(){
   });
   S.ots.forEach(function(x){
     if(x.status !== 'approved') return;
-    var m = otMap[x.email]; if(!m) return;
+    var m = otMap[T.personKey(x)]; if(!m) return;
     var k = x.ym || T.ym(x.date);
     if(months.indexOf(k) < 0) return;
     m[k] = roundHalf((m[k] || 0) + x.hours + (x.bonusHours || 0));
@@ -919,10 +919,10 @@ function renderSummary(){
   var lvTot = 0, otTot = 0, maxL = 0, maxO = 0;
   people.forEach(function(a){
     months.forEach(function(k){
-      lvTot = roundHalf(lvTot + (lvMap[a.email][k] || 0));
-      otTot = roundHalf(otTot + (otMap[a.email][k] || 0));
-      maxL = Math.max(maxL, lvMap[a.email][k] || 0);
-      maxO = Math.max(maxO, otMap[a.email][k] || 0);
+      lvTot = roundHalf(lvTot + (lvMap[T.personKey(a)][k] || 0));
+      otTot = roundHalf(otTot + (otMap[T.personKey(a)][k] || 0));
+      maxL = Math.max(maxL, lvMap[T.personKey(a)][k] || 0);
+      maxO = Math.max(maxO, otMap[T.personKey(a)][k] || 0);
     });
   });
 
@@ -939,9 +939,9 @@ function renderSummary(){
 
   /* 長條圖 */
   var perL = months.map(function(k){
-    return roundHalf(people.reduce(function(s,a){ return s + (lvMap[a.email][k]||0); }, 0)); });
+    return roundHalf(people.reduce(function(s,a){ return s + (lvMap[T.personKey(a)][k]||0); }, 0)); });
   var perO = months.map(function(k){
-    return roundHalf(people.reduce(function(s,a){ return s + (otMap[a.email][k]||0); }, 0)); });
+    return roundHalf(people.reduce(function(s,a){ return s + (otMap[T.personKey(a)][k]||0); }, 0)); });
   var peak = Math.max(1, Math.max.apply(null, perL.concat(perO)));
   el('#bars').innerHTML = months.map(function(k,i){
     return '<div class="barw"><div class="bv">' + (perL[i]||'') + '</div>' +
@@ -965,7 +965,7 @@ function matrix(people, map, months, max, rgb){
   var rows = people.map(function(a){
     var sum = 0;
     var tds = months.map(function(k){
-      var v = map[a.email][k] || 0; sum = roundHalf(sum + v);
+      var v = map[T.personKey(a)][k] || 0; sum = roundHalf(sum + v);
       if(!v) return '<td>·</td>';
       var alpha = 0.12 + (max ? (v / max) * 0.55 : 0);
       return '<td><span class="cellv" style="background:rgba(' + rgb + ',' + alpha.toFixed(2) +
@@ -1257,12 +1257,12 @@ el('#expBtn').onclick = function(){
       /* 本月請假統計（給財務對薪水，不代算金額） */
       var now = new Date();
       var mKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-      var rows = S.accounts.map(function(a){
+      var rows = T.reportPeople(S.accounts, S.leaves.concat(S.ots)).map(function(a){
         var row = { '姓名': a.name || a.email, '年月': mKey };
         var total = 0;
         T.LEAVE_TYPES.forEach(function(t){ row[t.label] = 0; });
         S.leaves.forEach(function(x){
-          if(x.email !== a.email || x.status !== 'approved') return;
+          if(T.personKey(x) !== T.personKey(a) || x.status !== 'approved') return;
           var segs = (x.segments && x.segments.length) ? x.segments
                    : [{ ym: T.ym(x.startAt), hours: x.hours }];
           segs.forEach(function(sg){
@@ -1275,7 +1275,7 @@ el('#expBtn').onclick = function(){
         row['請假合計'] = total;
         var oh = 0, ob = 0;
         S.ots.forEach(function(x){
-          if(x.email !== a.email || x.status !== 'approved') return;
+          if(T.personKey(x) !== T.personKey(a) || x.status !== 'approved') return;
           if((x.ym || T.ym(x.date)) !== mKey) return;
           oh = roundHalf(oh + x.hours); ob = roundHalf(ob + (x.bonusHours||0));
         });
@@ -1482,10 +1482,10 @@ function renderMonth(){
 
   var box = el('#monList'); box.innerHTML = '';
   var any = false;
-  S.accounts.forEach(function(a){
+  T.reportPeople(S.accounts, S.leaves.concat(S.ots)).forEach(function(a){
     var by = {}, total = 0;
     S.leaves.forEach(function(x){
-      if(x.email !== a.email || x.status !== 'approved') return;
+      if(T.personKey(x) !== T.personKey(a) || x.status !== 'approved') return;
       var segs = (x.segments && x.segments.length) ? x.segments
                : [{ ym: T.ym(x.startAt), hours: x.hours }];
       segs.forEach(function(sg){
@@ -1514,10 +1514,10 @@ function renderMonth(){
 
   /* 加班 */
   var ob = el('#monOt'); ob.innerHTML = '';
-  S.accounts.forEach(function(a){
+  T.reportPeople(S.accounts, S.leaves.concat(S.ots)).forEach(function(a){
     var hrs = 0, bonus = 0, cnt = 0, dispatch = 0;
     S.ots.forEach(function(x){
-      if(x.email !== a.email || x.status !== 'approved') return;
+      if(T.personKey(x) !== T.personKey(a) || x.status !== 'approved') return;
       if((x.ym || T.ym(x.date)) !== mKey) return;
       hrs = roundHalf(hrs + x.hours);
       bonus = roundHalf(bonus + (x.bonusHours || 0));

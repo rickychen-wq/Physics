@@ -1,0 +1,34 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+function firestore(){ return {}; }
+firestore.FieldValue = { serverTimestamp: () => ({}) };
+firestore.Timestamp = { fromDate: x => x };
+const ctx = {window:{},document:{},navigator:{},console,setTimeout,clearTimeout,requestAnimationFrame(){},firebase:{apps:[1],firestore}};
+vm.runInNewContext(fs.readFileSync(path.join(root,'shared.js'),'utf8'),ctx);
+const T = ctx.window.TPS;
+const accounts=[{email:'conf@ps-taiwan.org',name:'呂勝浤',term:2}];
+const leaves=[{email:accounts[0].email,name:'簡鑫如',term:1,status:'approved',hours:8,startAt:new Date(2026,9,2),segments:[{ym:'2026-10',hours:8}],type:'annual'},
+ {email:accounts[0].email,name:'呂勝浤',term:2,status:'approved',hours:2,startAt:new Date(2026,9,3),segments:[{ym:'2026-10',hours:2}],type:'annual'}];
+const overtime=[{email:accounts[0].email,name:'簡鑫如',status:'approved',hours:4,bonusHours:0,date:new Date(2026,9,2),ym:'2026-10'}];
+assert.equal(T.personKey(overtime[0]),T.personKey(leaves[0]),'Missing legacy term defaults to 1');
+const people=T.reportPeople(accounts,leaves.concat(overtime));
+assert.equal(people.length,2,'A former term is listed exactly once');
+assert.equal(people[1].name,'簡鑫如');
+assert.equal(accounts.length,1,'Live account array must stay unchanged');
+const nodes={};
+const el=s=>nodes[s]||(nodes[s]={value:'2026',innerHTML:'',textContent:''});
+nodes['#sumYear']={value:'2026'};
+const stats=fs.readFileSync(path.join(root,'stats.html'),'utf8');
+const code=stats.slice(stats.indexOf('function yearOf('),stats.indexOf('/* ---------- 目前時數'));
+const sandbox={T,S:{accounts,leaves,ots:overtime},el,pad2:n=>String(n).padStart(2,'0'),roundHalf:T.roundHalf,esc:T.esc};
+vm.createContext(sandbox);vm.runInContext(code,sandbox);vm.runInContext('renderSummary()',sandbox);
+const rows=nodes['#tLeave'].innerHTML.split('<tr>');
+assert.match(rows.find(x=>x.includes('呂勝浤')),/class="tot">2<\/td>/);
+assert.match(rows.find(x=>x.includes('簡鑫如')),/class="tot">8<\/td>/);
+const otRows=nodes['#tOt'].innerHTML.split('<tr>');
+assert.match(otRows.find(x=>x.includes('呂勝浤')),/class="tot">0<\/td>/);
+assert.match(otRows.find(x=>x.includes('簡鑫如')),/class="tot">4<\/td>/);
+console.log('handover report tests passed');

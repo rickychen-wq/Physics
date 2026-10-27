@@ -744,11 +744,12 @@ function loadPay(){
     r[1].forEach(function(d){ var o=d.data(); o.id=d.id; lv.push(o); });
     r[2].forEach(function(d){ var o=d.data(); o.id=d.id; ot.push(o); });
 
+    accs = T.reportPeople(accs, lv.concat(ot));
     var box = el('#payList'); box.innerHTML = '';
     accs.forEach(function(a){
       var by = {}, total = 0;
       lv.forEach(function(x){
-        if(x.email !== a.email || x.status !== 'approved') return;
+        if(T.personKey(x) !== T.personKey(a) || x.status !== 'approved') return;
         var segs = (x.segments && x.segments.length) ? x.segments
                  : [{ ym: T.ym(x.startAt), hours: x.hours }];
         segs.forEach(function(sg){
@@ -776,7 +777,7 @@ function loadPay(){
     accs.forEach(function(a){
       var hrs = 0, bonus = 0, cnt = 0, dispatch = 0;
       ot.forEach(function(x){
-        if(x.email !== a.email || x.status !== 'approved') return;
+        if(T.personKey(x) !== T.personKey(a) || x.status !== 'approved') return;
         if((x.ym || T.ym(x.date)) !== mKey) return;
         hrs = roundHalf(hrs + x.hours);
         bonus = roundHalf(bonus + (x.bonusHours || 0));
