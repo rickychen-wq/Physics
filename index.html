@@ -288,6 +288,7 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 
 </style>
 <link rel="stylesheet" href="premium.css?v=5">
+<link rel="stylesheet" href="guide.css?v=1">
 </head>
 <body class="staff-page">
 <!-- 登入：滿版 -->
@@ -308,6 +309,7 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
     </div>
     <button class="btn" id="gBtn">登入</button>
     <p class="gfoot">第一次登入請用預設密碼，登入後到「設定」修改。</p>
+    <button class="tg-help tg-gate-help" type="button" data-tps-guide="install">加入主畫面／使用教學</button>
   </div>
 </section>
 
@@ -321,6 +323,7 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 </header>
 
 <main class="wrap">
+  <div class="tg-help-row"><button class="tg-help" type="button" data-tps-guide="welcome"><span aria-hidden="true">?</span>使用教學</button></div>
 
   <!-- 主頁 -->
   <section id="pHome">
@@ -486,6 +489,10 @@ label.lb{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
 
   <!-- 設定 -->
   <section id="pSet" class="hide">
+    <div class="card"><div class="chd"><h2>使用教學</h2></div><div class="cbd">
+      <p class="hint">重新認識請假、紀錄與通知，或查看 iPhone／Android 加入主畫面的步驟。</p>
+      <button class="btn ghost" type="button" data-tps-guide="welcome">重新看使用教學</button>
+    </div></div>
     <div class="card">
       <div class="chd"><h2>我的資料</h2></div>
       <div class="cbd">
@@ -1198,6 +1205,11 @@ el('#pushBtn').onclick = function(){
     .then(function(){ btn.disabled = false; renderPush(); });
 };
 
+</script>
+<script src="guide.js?v=1"></script>
+<script>
+TPSGuide.init({role:'staff', identity:function(){ var u=T.currentUser(); return u ? u.email + '.' + (u.term || 1) : 'guest'; },
+  navigate:function(p){ document.querySelector('.tabbar button[data-p="'+p+'"]').click(); }});
 </script>
 </body>
 </html>

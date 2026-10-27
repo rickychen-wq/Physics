@@ -1,0 +1,43 @@
+/* Self-contained tutorial styles; leave the existing application layout intact. */
+.tg-help-row{display:flex;justify-content:flex-end;margin:0 0 14px;position:relative;z-index:2}
+.tg-help{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:8px 15px;border:1px solid #526b98;border-radius:14px;background:linear-gradient(135deg,#1e2c47,#131c30);color:#edf4ff;font-family:inherit;font-size:16px;font-weight:750;line-height:1.4;cursor:pointer}
+.tg-help span{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#accbff;color:#111b30;font:800 16px/1 system-ui}
+.tg-gate-help{width:100%;margin-top:18px;font-size:16px;font-family:inherit}
+#tpsGuide[hidden]{display:none!important}
+#tpsGuide{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:rgba(2,6,15,.8);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-sizing:border-box}
+body.tg-open{position:fixed!important;top:var(--tg-scroll)!important;left:0;right:0;width:100%;overflow:hidden!important}
+.tg-panel{display:flex;flex-direction:column;width:100%;max-width:540px;max-height:100%;max-height:calc(100dvh - max(32px,env(safe-area-inset-top)) - max(32px,env(safe-area-inset-bottom)));overflow:hidden;box-sizing:border-box;border:1px solid #53617d;border-radius:28px;background:radial-gradient(ellipse at top left,#223a60 0,transparent 60%),linear-gradient(145deg,#18233a,#0d1424);box-shadow:0 25px 85px #0008,inset 0 1px #ffffff35;color:#fff;text-align:left;animation:tg-reveal .25s ease-out}
+.tg-top{flex:none;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;background:#172338;box-shadow:0 1px #ffffff16}
+.tg-top>span{font:750 15px/1.4 system-ui;letter-spacing:.04em;color:#c8dcff}
+.tg-close{width:44px;height:44px;border:1px solid #52627f;border-radius:50%;background:#26334b;color:#fff;font-size:28px;line-height:1;cursor:pointer;flex:none}
+.tg-content{padding:22px;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.tg-badge{font-size:15px;font-weight:750;color:#b8d2ff;margin-bottom:12px}
+.tg-panel h2{font:820 26px/1.35 -apple-system,BlinkMacSystemFont,'Noto Sans TC',system-ui,sans-serif;letter-spacing:-.02em;margin:0 0 14px;color:#fff}
+.tg-panel p{font:550 18px/1.8 -apple-system,BlinkMacSystemFont,'Noto Sans TC',system-ui,sans-serif;color:#dce5f4;margin:0 0 18px}
+.tg-preview{display:grid;gap:12px;text-align:center;padding:22px 12px;margin:22px 0;border:1px solid #60749966;border-radius:22px;background:linear-gradient(135deg,#294b7555,#26315755)}
+.tg-orb{display:grid;place-items:center;margin:auto;width:62px;height:62px;border-radius:21px;background:linear-gradient(140deg,#a7d4ff,#7299fb 55%,#a18afa);color:#10213a;font:850 36px/1 system-ui;box-shadow:0 8px 30px #5c91ff38,inset 0 1px #fff8}
+.tg-preview strong{font-size:20px;line-height:1.5;color:#fff}.tg-preview>span:last-child{font-size:16px;color:#d0dcf1}
+.tg-actions{display:grid;gap:12px;margin-top:20px}
+.tg-button{display:inline-flex;align-items:center;justify-content:center;min-height:50px;box-sizing:border-box;padding:12px 18px;border:1px solid #a7c8ff;border-radius:15px;background:linear-gradient(125deg,#9ac6ff,#6f96f9);color:#0b1a34;font:800 18px/1.5 -apple-system,BlinkMacSystemFont,'Noto Sans TC',system-ui,sans-serif;cursor:pointer;text-align:center;white-space:normal}
+.tg-button.tg-secondary{border-color:#627799;background:#1b2942;color:#f4f7ff}
+.tg-button.tg-text{border-color:transparent;background:transparent;color:#c9d6ed}
+.tg-button:disabled{opacity:.45;cursor:default}.tg-wide{width:100%}
+.tg-footer{display:flex;flex:none;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #53658088;padding:16px 22px;background:#142137}
+.tg-footer>span{color:#cad8ee;font:750 16px/1.4 system-ui;white-space:nowrap}
+.tg-footer .tg-button{font-size:17px;padding:12px 16px}
+.tg-checklist{list-style:none;display:grid;gap:12px;margin:24px 0;padding:0;counter-reset:tg-step}
+.tg-checklist li{display:flex;gap:12px;align-items:center;font-size:19px;font-weight:750;line-height:1.5;padding:14px;border:1px solid #526a8c88;background:#17253d;border-radius:16px}
+.tg-checklist li:before{counter-increment:tg-step;content:counter(tg-step);display:grid;place-items:center;width:30px;height:30px;flex:none;background:#c1d9ff;border-radius:50%;color:#10203a;font:800 17px/1 system-ui}
+.tg-devices{display:flex;gap:8px;margin:20px 0}.tg-devices .tg-button{flex:1;min-width:0;padding:10px 6px;font-size:16px}
+.tg-devices button[aria-pressed=true]{border-color:#c2dbff;background:#344e78;box-shadow:inset 0 0 0 1px #c2dbff;color:#fff}
+.tg-app-preview{display:flex;align-items:center;gap:14px;padding:14px;border-radius:18px;background:#0b1425;margin:18px 0;color:#edf4ff;font-size:17px;font-weight:750}
+.tg-app-preview img{width:52px;height:52px;border-radius:12px}
+.tg-instructions{padding-left:27px;margin:22px 0;color:#eef4ff;font-size:18px;line-height:1.8;font-weight:550}.tg-instructions li{padding-left:5px;margin-bottom:16px}.tg-instructions li::marker{color:#b6d3ff;font-weight:800}
+.tg-panel p.tg-note{font-size:16px;color:#c3cfe3;line-height:1.8}.tg-panel p.tg-status{font-size:17px;font-weight:650;background:#142d38;color:#b6efdf;border-radius:14px;padding:14px;margin-top:18px}.tg-status:empty{display:none}
+.tg-source{display:inline-block;min-height:44px;padding:10px 0;color:#bdd8ff;text-decoration:underline;text-underline-offset:4px;font-size:16px}
+.tg-target{outline:3px solid #d0e4ff!important;outline-offset:4px;scroll-margin-top:185px;scroll-margin-bottom:170px}
+#tgResume{position:fixed;z-index:9999;left:50%;transform:translateX(-50%);bottom:calc(100px + env(safe-area-inset-bottom));display:flex;gap:10px;width:max-content;max-width:calc(100% - 24px);box-sizing:border-box;padding:10px;border:1px solid #7897c4;border-radius:22px;background:#12223cf5;box-shadow:0 12px 38px #0008}
+#tgResume .tg-button{font-size:16px;padding:10px 14px}
+@keyframes tg-reveal{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+@media(max-width:360px){.tg-content{padding:18px}.tg-panel h2{font-size:24px}.tg-footer .tg-button{padding:12px;font-size:16px}.tg-devices .tg-button{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.tg-panel{animation:none}}

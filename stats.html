@@ -305,6 +305,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 
 </style>
 <link rel="stylesheet" href="premium.css?v=5">
+<link rel="stylesheet" href="guide.css?v=1">
 </head>
 <body class="stats-page">
 <section id="gate">
@@ -315,6 +316,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
     <div id="gErr" class="err hide"></div>
     <div class="field"><input type="password" id="gPw" placeholder="檢視密碼"></div>
     <button class="btn" id="gBtn">進入</button>
+    <button class="tg-help tg-gate-help" type="button" data-tps-guide="install">加入主畫面／使用教學</button>
   </div>
 </section>
 
@@ -353,6 +355,7 @@ td .cellv{display:inline-block;min-width:34px;padding:5px 8px;border-radius:7px}
 </div>
 
 <main>
+  <div class="tg-help-row"><button class="tg-help" type="button" data-tps-guide="welcome"><span aria-hidden="true">?</span>使用教學</button></div>
   <!-- 第一層：月曆 -->
   <div id="pCal">
     <div class="card">
@@ -1539,6 +1542,10 @@ function renderMonth(){
   });
 }
 
+</script>
+<script src="guide.js?v=1"></script>
+<script>
+TPSGuide.init({role:'stats', navigate:go});
 </script>
 </body>
 </html>
